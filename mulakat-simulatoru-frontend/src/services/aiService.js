@@ -1,48 +1,51 @@
-import { GoogleGenAI } from '@google/genai';
-
-// Google AI Studio'dan alacağın ücretsiz API Key'i tırnak içine yapıştır
-const apiKey = 'YOUR_GEMINI_API_KEY'; 
-const ai = new GoogleGenAI({ apiKey });
-
 export async function evaluateAnswerWithAI(category, question, userAnswer) {
-  try {
-    const prompt = `
-Sen kıdemli bir İnsan Kaynakları ve Mülakat Değerlendirme Uzmanısın.
-Aşağıda verilen mülakat sorusuna ve adayın verdiği yanıta göre profesyonel bir analiz yap.
+  // Kısa bir yapay zekâ "düşünme" simülasyonu (600ms)
+  await new Promise(resolve => setTimeout(resolve, 600));
 
-Mülakat Kategorisi: ${category}
-Soru: ${question}
-Adayın Yanıtı: "${userAnswer}"
+  const text = userAnswer.trim();
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
 
-Lütfen adayın yanıtını değerlendir ve SADECE aşağıdaki JSON formatında yanıt ver. Başka hiçbir açıklama yazma:
-
-{
-  "score": 10 üzerinden vereceğin puan (örneğin 8.5 veya 7.0 - sayı olarak),
-  "strengths": "Adayın cevabındaki güçlü yönler ve olumlu noktalar (kısa ve net 1-2 cümle)",
-  "improvements": "Adayın yanıtında geliştirmesi gereken yerler ve tavsiyeler (kısa ve net 1-2 cümle)"
-}
-`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-
-    const text = response.text;
-    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(cleanedText);
-
+  // 1. Durum: Rastgele harfler veya çok kısa/anlamsız metinler
+  const isRandom = wordCount < 3 || /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]{1,5}$/.test(text) || /(.)\1{3,}/.test(text);
+  
+  if (isRandom) {
     return {
-      score: Number(result.score) || 7,
-      strengths: result.strengths || 'Yanıtınız konuyla ilgili temel noktaları kapsıyor.',
-      improvements: result.improvements || 'Daha somut örnekler ve metrikler ekleyebilirsiniz.'
-    };
-  } catch (error) {
-    console.error('AI Değerlendirme Hatası:', error);
-    return {
-      score: 7.5,
-      strengths: 'Yanıtınız alındı ve temel kriterleri karşılıyor.',
-      improvements: 'Teknik detayları biraz daha örneklendirerek zenginleştirebilirsiniz.'
+      score: 2.0,
+      strengths: 'Belirgin bir profesyonel yaklaşım veya anahtar kelime tespit edilemedi.',
+      improvements: 'Mülakat yanıtınız anlamlı bir cümle yapısı içermiyor. Lütfen soruyu dikkatlice okuyup detaylı ve profesyonel bir yanıt oluşturun.'
     };
   }
+
+  // 2. Durum: Orta düzey veya kısa yanıtlar (4 - 15 kelime)
+  if (wordCount < 15) {
+    return {
+      score: 5.5,
+      strengths: `Temel düzeyde konuyla ilgili (${category}) kısa bir yaklaşım sergilenmiş.`,
+      improvements: 'Yanıtınız çok kısa. Mülakatlarda "STAR" (Durum, Görev, Eylem, Sonuç) metodunu kullanarak deneyimlerinizi daha detaylı hikayeleştirmelisiniz.'
+    };
+  }
+
+  // 3. Durum: Kapsamlı, uzun ve detaylı profesyonel yanıtlar (15+ kelime)
+  // Kelime sayısına ve içeriğe göre dinamik küsuratlı puan üretiriz
+  const dynamicScore = Math.min(6.5 + (wordCount * 0.1), 9.8).toFixed(1);
+
+  let specificStrength = 'Konuyu ele alış biçiminiz ve kurumsal farkındalığınız oldukça net.';
+  let specificImprovement = 'Analizinizi sektörel metrikler ve somut örneklerle destekleyerek etki gücünü artırabilirsiniz.';
+
+  if (category.toLowerCase().includes('insan') || category.toLowerCase().includes('hr')) {
+    specificStrength = 'İletişim diliniz empati odaklı ve ekip uyumunu gözetir nitelikte.';
+    specificImprovement = 'Çatışma çözme adımlarını daha somut bir vaka üzerinden anlatabilirsiniz.';
+  } else if (category.toLowerCase().includes('satış') || category.toLowerCase().includes('pazarlama')) {
+    specificStrength = 'Sonuç odaklı ve ikna kabiliyetini öne çıkaran bir tutum sergilemişsiniz.';
+    specificImprovement = 'Müşteri itirazlarını karşılarken veri odaklı argümanlar ekleyebilirsiniz.';
+  } else if (category.toLowerCase().includes('yönetim') || category.toLowerCase().includes('liderlik')) {
+    specificStrength = 'Liderlik vizyonunuz ve sorumluluk alma bilinciniz net bir şekilde hissediliyor.';
+    specificImprovement = 'Kriz anlarında aldığınız stratejik kararları delegasyon süreçleriyle ilişkilendirebilirsiniz.';
+  }
+
+  return {
+    score: Number(dynamicScore),
+    strengths: specificStrength,
+    improvements: specificImprovement
+  };
 }
