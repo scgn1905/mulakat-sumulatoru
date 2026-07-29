@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -14,16 +14,30 @@ import {
   Sparkles,
   Flame,
   UserCheck,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  User,
+  Settings,
+  LogOut
 } from 'lucide-react';
 
 export default function Home() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState(null);
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [currentScenario, setCurrentScenario] = useState(0);
+  
+  // Profil Menüsü State'i
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Dil değiştirme fonksiyonu (tr <-> en)
+  const toggleLanguage = () => {
+    const nextLang = i18n.language === 'en' ? 'tr' : 'en';
+    i18n.changeLanguage(nextLang);
+  };
 
   // Mülakatı Başlat Buton Kontrolü (Giriş yapılmamışsa Login'e yönlendirir)
   const handleStartInterview = () => {
@@ -37,6 +51,23 @@ export default function Home() {
       navigate('/login');
     }
   };
+
+  // Çıkış Yap Fonksiyonu
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+  // Menü dışına tıklandığında menüyü kapatma
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const scenarios = [
     {
@@ -56,7 +87,7 @@ export default function Home() {
     {
       role: "ÜRÜN YÖNETİCİSİ / PRODUCT OWNER (AI)",
       question: "Müşteri talepleri ile yazılım ekibinin teknik borç (technical debt) temizleme isteği çakıştığında önceliklendirmenizi nasıl yaparsınız?",
-      answer: "Teknik borcun sistem sürdürülebilirliğine ve gelecekteki hızımıza maliyetini ölçümler, ürün yol haritasında dengeli bir sprint dağılımı oluştururdum.",
+      answer: "Teknik borcun sürdürülebilirliğe etkisini ölçümler, ürün yol haritasında dengeli bir sprint dağılımı oluştururdum.",
       score: "90/100 — Analitik önceliklendirme ve denge odaklı.",
       tag: "Ürün Yönetimi"
     },
@@ -75,6 +106,16 @@ export default function Home() {
     }, 6000);
     return () => clearInterval(timer);
   }, [scenarios.length]);
+
+  // Sayfa yüklendiğinde URL'deki hash değerine göre kaydırma yapması için
+  useEffect(() => {
+    if (window.location.hash) {
+      const element = document.getElementById(window.location.hash.substring(1));
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, []);
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -114,6 +155,64 @@ export default function Home() {
 
   return (
     <div className="space-y-36 pb-20 text-slate-100">
+
+      {/* SAĞ ÜST KISIM: DİL BUTONU VE PROFİL MENÜSÜ */}
+      <div className="absolute top-6 right-8 z-50 flex items-center gap-3">
+        {/* Dil Değiştirici Buton */}
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 px-3 py-2 rounded-xl text-xs font-mono font-bold text-cyan-400 transition cursor-pointer shadow-lg"
+        >
+          <Globe size={15} />
+          <span>{i18n.language === 'en' ? 'TR' : 'EN'}</span>
+        </button>
+
+        {/* Profil Menüsü Alanı */}
+        <div className="relative" ref={menuRef}>
+          <div 
+            onClick={() => setProfileMenuOpen(prev => !prev)}
+            className="flex items-center gap-2.5 bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 px-4 py-2 rounded-2xl shadow-lg cursor-pointer transition select-none"
+          >
+            <div className="w-7 h-7 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 font-bold rounded-full flex items-center justify-center text-xs">
+              S
+            </div>
+            <span className="text-sm font-medium text-slate-200">seçgin</span>
+            <LogOut size={16} className="text-rose-400 ml-1 hover:text-rose-300 transition" onClick={(e) => { e.stopPropagation(); handleLogout(); }} />
+          </div>
+
+          {/* Açılır Profil Menüsü (Dropdown) */}
+          {profileMenuOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="px-4 py-2 border-b border-slate-800/80 mb-1">
+                <p className="text-xs text-slate-400 font-mono">Giriş yapılan hesap</p>
+                <p className="text-sm font-bold text-slate-200 truncate">seçgin</p>
+              </div>
+              <button 
+                onClick={() => { setProfileMenuOpen(false); navigate('/profile'); }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800/60 hover:text-cyan-400 transition cursor-pointer text-left"
+              >
+                <User size={16} className="text-cyan-400" />
+                <span>Profilim</span>
+              </button>
+              <button 
+                onClick={() => { setProfileMenuOpen(false); navigate('/settings'); }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800/60 hover:text-cyan-400 transition cursor-pointer text-left"
+              >
+                <Settings size={16} className="text-teal-400" />
+                <span>Ayarlar</span>
+              </button>
+              <div className="border-t border-slate-800/80 my-1"></div>
+              <button 
+                onClick={() => { setProfileMenuOpen(false); handleLogout(); }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-950/30 transition cursor-pointer text-left"
+              >
+                <LogOut size={16} />
+                <span>Çıkış Yap</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* HERO SECTION */}
       <section className="relative pt-8 flex flex-col items-center">
