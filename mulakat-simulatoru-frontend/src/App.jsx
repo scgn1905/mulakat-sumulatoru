@@ -6,6 +6,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Interview from './pages/Interview';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 
 // Korumalı Rota Bileşeni
 const ProtectedRoute = ({ children }) => {
@@ -13,7 +15,6 @@ const ProtectedRoute = ({ children }) => {
   const isValidToken = token && token !== 'null' && token !== 'undefined' && token.trim() !== '';
 
   if (!isValidToken) {
-    // Giriş yapılmamışsa mülakat sayfasına sokma, Login'e at
     return <Navigate to="/login" replace />;
   }
 
@@ -37,6 +38,24 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Interview />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             }
           />
