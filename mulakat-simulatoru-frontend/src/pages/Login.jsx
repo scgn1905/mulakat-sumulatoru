@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LogIn, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { LogIn, Mail, Lock, User, ArrowRight, Sparkles, CheckCircle, ShieldCheck } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,89 +16,173 @@ export default function Login() {
       return;
     }
 
-    // Kullanıcı adı girilmediyse e-postanın başını isim yapalım
     const displayName = name.trim() !== '' ? name : email.split('@')[0];
 
-    // OTURUM BİLGİLERİNİ LOCALSTORAGE'A KAYDEDİYORUZ
+    // OTURUM BİLGİLERİ (Navbar ile uyumlu olması için 'user' objesi de eklendi)
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('token', 'mock_token_' + Date.now());
     localStorage.setItem('userName', displayName);
+    localStorage.setItem('user', JSON.stringify({ name: displayName, email: email }));
 
-    // Ana sayfaya veya mülakat sayfasına yönlendir
     navigate('/', { replace: true });
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <LogIn size={24} />
+    <div className="min-h-[calc(100vh-80px)] bg-slate-950 flex items-center justify-center p-4 md:p-8">
+      
+      {/* ANA SARMALAYICI KART */}
+      <div className="max-w-5xl w-full bg-slate-900/80 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+        
+        {/* SOL PANEL: GÖRSEL + AI MÜLAKAT KARTI & ÖZELLİKLER (7 Kolon) */}
+        <div className="lg:col-span-7 relative p-8 md:p-12 flex flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-b lg:border-b-0 lg:border-r border-slate-800/80">
+          
+          {/* Arka Plan Görseli & İnce Degrade */}
+          <div 
+            className="absolute inset-0 z-0 opacity-20 bg-cover bg-center pointer-events-none filter contrast-125 mix-blend-luminosity" 
+            style={{ backgroundImage: `url('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80')` }} 
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent z-0" />
+
+          {/* Işık Efekti (Glow) */}
+          <div className="absolute top-0 left-0 w-72 h-72 bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+
+          {/* ÜST LOGO / BADGE */}
+          <div className="relative z-10 flex items-center justify-between">
+            <span className="text-xs font-mono text-cyan-400 bg-cyan-950/80 border border-cyan-800/60 px-3 py-1 rounded-full flex items-center gap-2">
+              <Sparkles size={14} className="text-cyan-400 animate-pulse" />
+              Yapay Zekâ Destekli Simülasyon
+            </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-100">Mülakat Simülatörüne Giriş</h1>
-          <p className="text-slate-400 text-xs">Devam etmek için bilgilerinizi girin.</p>
+
+          {/* ORTA BÖLÜM: BAŞLIK & MÜLAKAT KARTI ÖNİZLEMESİ */}
+          <div className="relative z-10 my-8 space-y-6">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-100 leading-tight">
+              Geleceğin Mülakat <br />
+              <span className="bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">
+                Deneyimini Keşfet
+              </span>
+            </h2>
+            <p className="text-slate-400 text-sm leading-relaxed max-w-md">
+              Gerçekçi İK ve teknik senaryolarla pratik yap, yapay zekâ analizleriyle eksiklerini tamamla ve mülakat özgüvenini katla.
+            </p>
+
+            {/* AI Canlı Skor Önizleme Kartı */}
+            <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3 max-w-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
+                  <span className="text-xs font-mono text-slate-300">Canlı Analiz Motoru</span>
+                </div>
+                <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-900">STAR Metodu</span>
+              </div>
+              <p className="text-xs text-slate-300 italic">"Geri bildirim diliniz analitik ve çözüm odaklı. İletişim puanı: 94/100"</p>
+            </div>
+          </div>
+
+          {/* ALT BÖLÜM: MADDELER / AVANTAJLAR */}
+          <div className="relative z-10 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-4 text-xs text-slate-300">
+            <div className="flex items-center gap-2">
+              <CheckCircle size={16} className="text-cyan-400 shrink-0" />
+              <span>Anlık Ses & Metin Analizi</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-teal-400 shrink-0" />
+              <span>Sektöre Özel Sorular</span>
+            </div>
+          </div>
+
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300 ml-1">Adınız / Kullanıcı Adınız</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
-                <User size={18} />
-              </span>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Örn: Ahmet Yılmaz"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 transition"
-              />
+        {/* SAĞ PANEL: FORM ALANI (5 Kolon) */}
+        <div className="lg:col-span-5 p-8 md:p-10 flex flex-col justify-center space-y-6 bg-slate-900/90">
+          
+          <div className="space-y-2">
+            <div className="w-10 h-10 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-xl flex items-center justify-center">
+              <LogIn size={20} />
             </div>
+            <h1 className="text-2xl font-black text-slate-100">Giriş Yap</h1>
+            <p className="text-slate-400 text-xs">Simülatöre erişmek için bilgilerinizi girin.</p>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300 ml-1">E-posta Adresi</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
-                <Mail size={18} />
-              </span>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ornek@mail.com"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 transition"
-              />
+          <form onSubmit={handleLogin} className="space-y-4">
+            
+            {/* Kullanıcı Adı */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300 ml-1">Adınız / Kullanıcı Adınız</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
+                  <User size={18} />
+                </span>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Örn: Ahmet Yılmaz"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 transition"
+                />
+              </div>
             </div>
+
+            {/* E-posta */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300 ml-1">E-posta Adresi</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
+                  <Mail size={18} />
+                </span>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ornek@mail.com"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 transition"
+                />
+              </div>
+            </div>
+
+            {/* Şifre */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300 ml-1">Şifre</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
+                  <Lock size={18} />
+                </span>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 transition"
+                />
+              </div>
+            </div>
+
+            {/* Gönder Butonu */}
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 font-extrabold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-cyan-500/10 cursor-pointer pt-3 mt-2"
+            >
+              <span>Giriş Yap ve Başla</span>
+              <ArrowRight size={18} />
+            </button>
+          </form>
+
+          {/* Kayıt Ol Linki */}
+          <div className="text-center pt-2">
+            <p className="text-xs text-slate-400">
+              Hesabınız yok mu?{' '}
+              <Link to="/register" className="text-cyan-400 font-semibold hover:underline">
+                Hemen Kayıt Olun
+              </Link>
+            </p>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300 ml-1">Şifre</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
-                <Lock size={18} />
-              </span>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 transition"
-              />
-            </div>
-          </div>
+        </div>
 
-          <button
-            type="submit"
-            className="w-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer mt-2"
-          >
-            <span>Giriş Yap ve Başla</span>
-            <ArrowRight size={18} />
-          </button>
-        </form>
       </div>
+
     </div>
   );
 }

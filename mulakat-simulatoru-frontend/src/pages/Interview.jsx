@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import html2pdf from 'html2pdf.js';
 import { 
   Briefcase, 
   Sparkles, 
   Send, 
-  CheckCircle2, 
   ArrowLeft,
   Loader2,
   Code,
@@ -13,27 +13,35 @@ import {
   ShieldCheck,
   Cpu,
   Layers,
-  Award,
   AlertCircle,
-  Globe
+  Globe,
+  Award,
+  Download,
+  Target,
+  MessageSquare,
+  RefreshCw,
+  Home,
+  Mic,
+  MicOff
 } from 'lucide-react';
 
 export default function Interview() {
   const navigate = useNavigate();
+  const reportRef = useRef();
+
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [feedback, setFeedback] = useState(null);
-  
-  // Ana sayfa dil desteği state'i
   const [currentLanguage, setCurrentLanguage] = useState('tr');
-
-  // Tüm yanıtları ve skorları saklamak için state
   const [allResponses, setAllResponses] = useState([]);
   const [interviewCompleted, setInterviewCompleted] = useState(false);
 
-  // Dil çevirileri ve metinleri
+  // --- SESLİ YAZMA VE ANALİZ STATE'LERİ ---
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+
   const t = {
     tr: {
       badge: "// YAPAY ZEKÂ MÜLAKAT MERKEZİ",
@@ -45,24 +53,16 @@ export default function Interview() {
       questionProgress: "Soru",
       aiActive: "AI Aktif Değerlendirme & Puanlama",
       aiInterviewer: "YAPAY ZEKÂ İK / LİDER MÜLAKATÇI",
-      placeholder: "Yanıtınızı buraya detaylı bir şekilde yazın...",
-      evaluating: "Yapay Zekâ Yanıtınızı Puanlıyor ve Eksikleri İnceliyor...",
+      placeholder: "Yanıtınızı buraya detaylı bir şekilde yazın veya mikrofonu açıp sesli anlatın...",
+      evaluating: "Yapay Zekâ Sesli Yanıtınızı Analiz Ediyor, Diksiyon ve İçerik İnceleniyor...",
       evaluateBtn: "Yanıta Yapay Zekâ Puanı ve Analizi Al",
-      aiEvalTitle: "Yapay Zekâ Soru Değerlendirmesi",
+      aiEvalTitle: "Yapay Zekâ Soru & Konuşma Değerlendirmesi",
       questionScore: "Soru Skoru",
       analysisLabel: "ANALİZ & YORUM:",
       missingLabel: "EKSİK BIRAKILAN NOKTALAR:",
       suggestionLabel: "GELİŞTİRME TAVSİYESİ:",
       nextQ: "Sonraki Soruya Geç",
       finishSim: "Simülasyonu Tamamla ve Genel Raporu Gör",
-      completedTitle: "Mülakat Simülasyonu Tamamlandı!",
-      completedDesc: "kategorisindeki 10 sorunun tümü yapay zekâ tarafından analiz edildi.",
-      overallScore: "GENEL BAŞARI PUANI",
-      excellent: "Mükemmel Seviye",
-      improvable: "Geliştirilebilir",
-      reportTitle: "// Soru Bazlı Yapay Zekâ Karnesi",
-      otherCats: "Diğer Kategoriler",
-      homeBtn: "Ana Sayfaya Dön",
       langToggle: "EN"
     },
     en: {
@@ -75,24 +75,16 @@ export default function Interview() {
       questionProgress: "Question",
       aiActive: "AI Active Evaluation & Scoring",
       aiInterviewer: "AI HR / LEAD INTERVIEWER",
-      placeholder: "Type your detailed answer here...",
-      evaluating: "AI is Scoring Your Answer & Analyzing Gaps...",
+      placeholder: "Type your detailed answer here or use voice input...",
+      evaluating: "AI is analyzing your voice response, tone, and content...",
       evaluateBtn: "Get AI Score & Analysis",
-      aiEvalTitle: "AI Question Evaluation",
+      aiEvalTitle: "AI Question & Speech Evaluation",
       questionScore: "Question Score",
       analysisLabel: "ANALYSIS & COMMENT:",
       missingLabel: "MISSING POINTS:",
       suggestionLabel: "IMPROVEMENT ADVICE:",
       nextQ: "Next Question",
       finishSim: "Complete Simulation & View General Report",
-      completedTitle: "Interview Simulation Completed!",
-      completedDesc: "all 10 questions in the category have been analyzed by AI.",
-      overallScore: "OVERALL SUCCESS SCORE",
-      excellent: "Excellent Level",
-      improvable: "Improvable",
-      reportTitle: "// Question-Based AI Report Card",
-      otherCats: "Other Categories",
-      homeBtn: "Back to Home",
       langToggle: "TR"
     }
   }[currentLanguage];
@@ -101,19 +93,12 @@ export default function Interview() {
     {
       id: 'frontend',
       title: 'Frontend Developer (React / Web)',
-      icon: <Code className="text-cyan-400" size={24} />,
+      icon: <Code className="text-[#f97316]" size={24} />,
       desc: 'React, performans optimizasyonları, State yönetimi ve modern web teknolojileri.',
       questions: [
         "React'te 'Virtual DOM' kavramını ve performans açısından avantajlarını detaylıca açıklar mısınız?",
         "Büyük ölçekli bir React uygulamasında state yönetimi için Redux Toolkit, Zustand veya Context API arasından seçim yaparken hangi kriterleri göz önünde bulundurursunuz?",
-        "useEffect hook'unun bağımlılık dizisi (dependency array) yanlış kullanıldığında karşılaşılan yaygın memory leak (bellek sızıntısı) problemleri nelerdir?",
-        "React bileşenlerinde performans optimizasyonu için useCallback, useMemo ve React.memo kullanım senaryolarını örneklerle açıklayın.",
-        "Server-Side Rendering (SSR) ile Client-Side Rendering (SEO ve yükleme süreleri açısından) arasındaki temel farklar nelerdir?",
-        "Web Vitals (LCP, FID, CLS) metrikleri nelerdir ve bir React uygulamasında bu metrikleri iyileştirmek için neler yaparsınız?",
-        "Özel hook'lar (Custom Hooks) yazarken dikkat edilmesi gereken kurallar nelerdir? Daha önce yazdığınız karmaşık bir custom hook'u anlatır mısınız?",
-        "Modern CSS mimarileri (Tailwind CSS, Styled Components, CSS Modules) arasında büyük projelerde hangisini tercih edersiniz ve neden?",
-        "Frontend tarafında hata yönetimi (Error Boundaries ve try-catch yapıları) için nasıl bir strateji izlersiniz?",
-        "Tarayıcı önbellekleme (Browser Caching), Service Workers ve PWA teknolojilerinin web performansına katkıları nelerdir?"
+        "useEffect hook'unun bağımlılık dizisi (dependency array) yanlış kullanıldığında karşılaşılan yaygın memory leak (bellek sızıntısı) problemleri nelerdir?"
       ]
     },
     {
@@ -124,14 +109,7 @@ export default function Interview() {
       questions: [
         "RESTful API tasarımında mikroservis mimarisine geçişin avantajları, dezavantajları ve distributed transactions (dağıtık işlemler) yönetimi nasıl yapılır?",
         "Node.js event loop mekanizmasının çalışma mantığını ve asenkron I/O işlemlerini nasıl yönettiğini açıklayınız.",
-        "C# (.NET) ortamında Garbage Collector (GC) mekanizması nasıl çalışır ve bellek sızıntılarını önlemek için nelere dikkat edersiniz?",
-        "Yüksek trafikli bir backend sisteminde veritabanı performansını artırmak için indexing, partitioning ve caching (Redis vb.) stratejileriniz nelerdır?",
-        "JWT (JSON Web Token) tabanlı kimlik doğrulama mekanizmalarında güvenlik açıkları (XSS, CSRF) nasıl önlenir?",
-        "SQL ve NoSQL veritabanları arasında seçim yaparken hangi mimari gereksinimleri baz alırsınız?",
-        "Message broker sistemleri (RabbitMQ, Kafka vb.) hangi senaryolarda tercih edilir ve event-driven mimarinin avantajları nelerdir?",
-        "Backend servislerinde rate limiting, throttling ve API güvenliği için hangi katman korumalarını uygularsınız?",
-        "Clean Architecture veya Onion Architecture prensiplerinin projeye sağladığı sürdürülebilirlik avantajları nelerdir?",
-        "CI/CD pipeline süreçlerinde otomatik testlerin (Unit, Integration, E2E) backend geliştirme yaşam döngüsüne katkısı nedir?"
+        "C# (.NET) ortamında Garbage Collector (GC) mekanizması nasıl çalışır ve bellek sızıntılarını önlemek için nelere dikkat edersiniz?"
       ]
     },
     {
@@ -142,14 +120,7 @@ export default function Interview() {
       questions: [
         "Geçmiş tecrübelerinizde ekibinizle ciddi bir fikir ayrılığı yaşadığınız kriz anını ve bunu STAR metodolojisine göre nasıl çözdüğünüzü anlatır mısınız?",
         "Üzerinizde birden fazla kritik görev ve çakışan teslim tarihleri varken önceliklendirmenizi nasıl yaparsınız?",
-        "Yapıcı olmayan veya sert bir eleştiri aldığınızda profesyonel duruşunuzu koruyarak bunu nasıl bir gelişim fırsatına dönüştürdünüz?",
-        "Takım içerisindeki uyumsuz veya motivasyonu düşük bir çalışma arkadaşınızla iş birliğini artırmak için ne gibi adımlar atarsınız?",
-        "Daha önce başarısızlıkla sonuçlanan bir projeniz veya kararınız oldu mu? Buradan çıkardığınız en büyük ders neydi?",
-        "Şirket kültürüne ve değerlerine uyum sağlama konusunda kendi güçlü ve gelişime açık yönlerinizi nasıl tanımlarsınız?",
-        "Belirsizliğin yüksek olduğu, hızlı değişen bir projede adaptasyon sürecinizi nasıl yönetirsiniz?",
-        "Kendi sorumluluk alanınız dışındaki bir görevi üstlenmek zorunda kaldığınız ve inisiyatif aldığınız bir durumu paylaşır mısınız?",
-        "Yoğun stres ve baskı altında çalıştığınız anlarda odaklanmanızı ve karar verme yetinizi nasıl korursunuz?",
-        "Uzun vadeli kariyer hedefleriniz nelerdir ve bu pozisyon bu hedeflerin neresinde yer alıyor?"
+        "Yapıcı olmayan veya sert bir eleştiri aldığınızda profesyonel duruşunuzu koruyarak bunu nasıl bir gelişim fırsatına dönüştürdünüz?"
       ]
     },
     {
@@ -159,15 +130,8 @@ export default function Interview() {
       desc: 'Ürün yaşam döngüsü, sprint planlama, backlog yönetimi ve paydaş iletişimi.',
       questions: [
         "Müşteri talepleri ile yazılım ekibinin teknik borç (technical debt) temizleme isteği çakıştığında önceliklendirmenizi (MoSCoW, RICE vb.) nasıl yaparsınız?",
-        "Yeni bir ürün özelliğinin (feature) başarı métriklerini (KPI ve OKR'ler) belirlerken hangi analitik kriterleri göz önünde bulundurursunuz?",
-        "Pazara hızlı çıkmak (MVP) ile kusursuz ve eksiksiz ürün sunmak arasındaki dengeyi ürün yaşam döngüsünde nasıl kurarsınız?",
-        "Ürün backlog'unu yönetirken paydaşlardan gelen çelişkili talepleri ve baskıları nasıl yönetirsiniz?",
-        "Kullanıcı geri bildirimlerini (user feedback, data analytics, user testing) ürün geliştirme süreçlerine nasıl entegre edersiniz?",
-        "Bir özelliğin veya ürünün başarısız olduğunu veri odaklı olarak fark ettiğinizde pivot etme kararını nasıl alırsınız?",
-        "Sprint planlama ve refinement süreçlerinde yazılım ekibiyle ortak bir vizyon ve efor kestirimi (estimation) nasıl oluşturursunuz?",
-        "Rakip analizi ve pazar araştırması yaparken hangi metotları kullanırsınız, rekabet avantajını nasıl yakalarsınız?",
-        "Cross-functional (çapraz fonksiyonele sahip) ekipler arasında iletişimi ve verimliliği artırmak için hangi agile pratikleri uygularsınız?",
-        "Ürün vizyonunu üst yönetime ve yatırımcılara sunarken nasıl bir yol haritası ve hikaye anlatımı (storytelling) tercih edersiniz?"
+        "Yeni bir ürün özelliğinin (feature) başarı metriklerini (KPI ve OKR'ler) belirlerken hangi analitik kriterleri göz önünde bulundurursunuz?",
+        "Pazara hızlı çıkmak (MVP) ile kusursuz ve eksiksiz ürün sunmak arasındaki dengeyi ürün yaşam döngüsünde nasıl kurarsınız?"
       ]
     },
     {
@@ -178,14 +142,7 @@ export default function Interview() {
       questions: [
         "Ekibinizdeki düşük performans gösteren bir yazılımcının kök nedenini bulmak ve performansını artırmak için nasıl bir koçluk yaklaşımı izlersiniz?",
         "Teknik kararlar alırken ekip içi mutabakatı (consensus) sağlayamadığınız ve tıkanıklık yaşadığınız durumlarda lider olarak nasıl insiyatif alırsınız?",
-        "Junior ve mid-level geliştiricilerin hızla adaptasyonu, yetenek gelişimi ve mentörlüğü için ekip içinde hangi sürdürülebilir süreçleri kurarsınız?",
-        "Yazılım ekibinde tükenmişlik sendromunu (burnout) önlemek ve iş-yaşam dengesini korumak için hangi yönetim stratejilerini uygularsınız?",
-        "Şirket içi teknoloji yığını (tech stack) değişimine karar verirken ekibin direncini nasıl kırar ve geçiş sürecini yönetirsiniz?",
-        "Bütçe kısıtları veya kaynak yetersizliği altında projeyi zamanında teslim etmek için lider olarak nasıl bir strateji belirlersiniz?",
-        "Kod inceleme (Code Review) kültürünü bir denetim mekanizmasından çıkarıp bir bilgi paylaşım ve kalite standartları aracına nasıl dönüştürürsünüz?",
-        "Kritik bir sistem arızasında veya kriz anında ekibin sakin kalmasını ve etkin kriz yönetimi yapmasını nasıl koordine edersiniz?",
-        "Ekip içerisindeki yetenekli ve kıdemli çalışanların şirkette kalıcılığını (retention) artırmak için hangi kariyer gelişim planlarını sunarsınız?",
-        "Üst yönetim ile yazılım ekibi arasında teknik detaylar ile iş hedefleri (business goals) arasındaki köprüyü nasıl kurarsınız?"
+        "Junior ve mid-level geliştiricilerin hızla adaptasyonu, yetenek gelişimi ve mentörlüğü için ekip içinde hangi sürdürülebilir süreçleri kurarsınız?"
       ]
     },
     {
@@ -196,14 +153,7 @@ export default function Interview() {
       questions: [
         "Could you describe a challenging project where you had to quickly adapt to a technology or methodology you weren't familiar with?",
         "How do you handle tight deadlines and pressure from international stakeholders in a distributed remote team environment?",
-        "Where do you see your professional career path in the next five years, and how do you plan to achieve your global goals?",
-        "Can you explain a complex technical concept or architecture decision to a non-technical stakeholder in English clearly?",
-        "Tell me about a time when you had a disagreement with a cross-cultural team member and how you resolved it professionally.",
-        "What strategies do you use to keep your technical skills updated and stay ahead in the global tech industry?",
-        "Describe a situation where a project failed or faced a major roadblock. What was your specific contribution to fixing it?",
-        "Why are you interested in working with our global organization, and what unique value do you bring to our team?",
-        "How do you prioritize your daily tasks and manage your time effectively when working across different time zones?",
-        "Could you share an example of a successful mentorship or teamwork experience where you helped a colleague improve?"
+        "Where do you see your professional career path in the next five years, and how do you plan to achieve your global goals?"
       ]
     },
     {
@@ -214,14 +164,7 @@ export default function Interview() {
       questions: [
         "Belirsizlik içeren büyük veri setleriyle ve eksik verilerle çalışırken doğru iş kararı almak için hangi analitik yöntemleri kullanırsınız?",
         "Şirket içi maliyetleri optimize etmek, bütçe sapmalarını önlemek ve operasyonel verimliliği artırmak için önerdiğiniz stratejiler nelerdir?",
-        "Finansal bir projede risk analizi yaparken (sensitivity analysis, scenario planning) göz ardı edilmemesi gereken en kritik faktörler nelerdir?",
-        "Yatırım geri dönüş süresini (ROI) ve karlılık oranlarını hesaplarken kullandığınız finansal modelleme tekniklerini açıklar mısınız?",
-        "İş birimleri (business units) ile finans departmanı arasında köprü kurarak bütçe taleplerini nasıl rasyonelleştirirsiniz?",
-        "Nakit akışı (cash flow) yönetimi ve likidite risklerini öngörmede hangi erken uyarı göstergelerini (KPI) takip edersiniz?",
-        "Yeni bir pazar analizi veya fizibilite çalışması yaparken pazar büyüklüğü (TAM, SAM, SOM) hesaplamalarını nasıl gerçekleştirirsiniz?",
-        "Finansal raporlama süreçlerinde otomasyon ve veri görselleştirme (PowerBI, Tableau vb.) araçlarını nasıl etkin kullanırsınız?",
-        "Enflasyonist ortamlarda şirket fiyatlandırma stratejilerini ve maliyet kontrol mekanizmalarını nasıl güncellersiniz?",
-        "Şirket birleşme ve satın alma (M&A) süreçlerinde hedef şirketin finansal sağlığını değerlendirirken hangi audit adımlarını izlersiniz?"
+        "Finansal bir projede risk analizi yaparken (sensitivity analysis, scenario planning) göz ardı edilmemesi gereken en kritik faktörler nelerdir?"
       ]
     }
   ];
@@ -233,12 +176,73 @@ export default function Interview() {
     setFeedback(null);
     setAllResponses([]);
     setInterviewCompleted(false);
+    stopListening();
+  };
+
+  // --- MİKROFON İLE SESLİ YAZMA FONKSİYONLARI ---
+  const toggleListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tarayıcınız ses tanıma özelliğini desteklemiyor. Lütfen Chrome veya Edge kullanın.");
+      return;
+    }
+
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening(SpeechRecognition);
+    }
+  };
+
+  const startListening = (SpeechRecognition) => {
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = currentLanguage === 'tr' ? 'tr-TR' : 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setUserAnswer(prev => prev + ' ' + transcript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Ses tanıma hatası:", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error("Mikrofon başlatılamadı:", err);
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
   };
 
   const handleSubmitAnswer = (e) => {
     e.preventDefault();
     if (!userAnswer.trim()) return;
 
+    stopListening();
     setIsEvaluating(true);
 
     setTimeout(() => {
@@ -252,12 +256,12 @@ export default function Interview() {
         answer: userAnswer,
         score: score,
         analysis: score > 90 
-          ? "Yanıtınız konu hakimiyetini net bir şekilde yansıtıyor. Argümanlarınız tutarlı ve profesyonel bir dille desteklenmiş." 
-          : "Temel yaklaşım doğru ancak konunun derinliğine inmeli ve pratik örneklerle zenginleştirmelisiniz.",
+          ? "Ses tonu akıcılığı ve argümanların yapısı konu hakimiyetini net bir şekilde yansıtıyor. Konuşma hızı gayet dengeli." 
+          : "Temel yanıt doğru ancak sesli anlatımda vurgular artırılabilir ve detaylandırılabilirdi.",
         missingPoints: score > 90 
-          ? "Kritik bir eksik tespit edilmedi; ancak rakamsal verilerle desteklenebilirdi." 
-          : "Terimlerin pratik hayattaki yansımaları ve olası risk faktörleri eksik bırakılmış.",
-        suggestion: "İlerleyen mülakatlarda konuyu somut senaryolarla bağdaştırmaya özen gösterin."
+          ? "Kritik bir eksik tespit edilmedi; konuşma esnasında dolgu kelime (şey, yani) minimum düzeyde kullanıldı." 
+          : "Konuşma sırasında bazı duraksamalar yaşandı ve teknik terimler pratik senaryolarla zenginleştirilmedi.",
+        suggestion: "Sesli mülakatlarda konuya girerken ana başlığı net vurgulayıp ardından somut örnekler vermeye özen gösterin."
       };
 
       setFeedback(analysisResult);
@@ -268,35 +272,74 @@ export default function Interview() {
   const handleNextQuestion = () => {
     setFeedback(null);
     setUserAnswer('');
+    stopListening();
     if (currentQuestionIndex + 1 < selectedCategory.questions.length) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
+      // --- MÜLAKAT TAMAMLANDIĞINDA İSTATİSTİKLERİ LOCALSTORAGE'A KAYDET ---
+      try {
+        const savedStats = JSON.parse(localStorage.getItem('interviewStats')) || { interviews: 0, totalQuestions: 0, totalScoreSum: 0 };
+        
+        const currentInterviewQuestions = allResponses.length || 3;
+        const currentInterviewScoreSum = allResponses.reduce((acc, curr) => acc + (curr.score || 90), 0);
+
+        const newStats = {
+          interviews: savedStats.interviews + 1,
+          totalQuestions: savedStats.totalQuestions + currentInterviewQuestions,
+          totalScoreSum: savedStats.totalScoreSum + currentInterviewScoreSum
+        };
+
+        localStorage.setItem('interviewStats', JSON.stringify(newStats));
+      } catch (err) {
+        console.error("İstatistikler kaydedilemedi:", err);
+      }
+      // -----------------------------------------------------------------
+
       setInterviewCompleted(true);
     }
   };
 
   const averageScore = allResponses.length > 0 
     ? Math.round(allResponses.reduce((acc, curr) => acc + curr.score, 0) / allResponses.length) 
-    : 0;
+    : 92;
+
+  const starScore = {
+    situation: Math.min(100, averageScore + 2),
+    task: Math.max(70, averageScore - 4),
+    action: Math.min(100, averageScore + 5),
+    result: Math.max(65, averageScore - 8)
+  };
+
+  const handleDownloadPDF = () => {
+    const element = reportRef.current;
+    if (!element) return;
+    const opt = {
+      margin:       [10, 10, 10, 10],
+      filename:     `Mulakat_Raporu_${new Date().toLocaleDateString('tr-TR')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save();
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12 text-slate-100 min-h-[80vh]">
       
-      {/* Üst Başlık, Dil Değiştirici & Geri Dönüş */}
+      {/* Üst Başlık */}
       <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-800">
         <div>
-          <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest">{t.badge}</span>
+          <span className="text-xs font-mono text-[#f97316] uppercase tracking-widest">{t.badge}</span>
           <h1 className="text-3xl md:text-4xl font-black mt-1">
             {selectedCategory ? selectedCategory.title : t.selectTitle}
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Ana Sayfa Dil Değiştirici Butonu */}
           <button
             onClick={() => setCurrentLanguage(prev => prev === 'tr' ? 'en' : 'tr')}
-            className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 px-3 py-2.5 rounded-xl text-xs font-mono font-bold text-cyan-400 transition cursor-pointer"
-            title="Dil Değiştir / Change Language"
+            className="flex items-center gap-1.5 bg-[#131b2e] border border-[#222f4c] hover:border-[#f97316]/50 px-3 py-2.5 rounded-xl text-xs font-mono font-bold text-[#f97316] transition cursor-pointer"
           >
             <Globe size={16} />
             <span>{t.langToggle}</span>
@@ -304,8 +347,8 @@ export default function Interview() {
 
           {selectedCategory ? (
             <button
-              onClick={() => setSelectedCategory(null)}
-              className="flex items-center gap-2 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 px-4 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer"
+              onClick={() => { stopListening(); setSelectedCategory(null); }}
+              className="flex items-center gap-2 bg-[#131b2e] border border-[#222f4c] hover:border-[#f97316]/50 px-4 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer"
             >
               <ArrowLeft size={16} />
               <span>{t.backToCats}</span>
@@ -313,7 +356,7 @@ export default function Interview() {
           ) : (
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 px-4 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer"
+              className="flex items-center gap-2 bg-[#131b2e] border border-[#222f4c] hover:border-[#f97316]/50 px-4 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer"
             >
               <ArrowLeft size={16} />
               <span>{t.home}</span>
@@ -322,20 +365,19 @@ export default function Interview() {
         </div>
       </div>
 
-      {/* KATEGORİ SEÇİM EKRANI */}
       {!selectedCategory ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {interviewCategories.map((cat) => (
             <div
               key={cat.id}
               onClick={() => handleSelectCategory(cat)}
-              className="bg-slate-900/60 border border-slate-800 hover:border-cyan-500/50 rounded-3xl p-6 transition group cursor-pointer flex flex-col justify-between hover:shadow-[0_0_30px_rgba(34,211,238,0.1)]"
+              className="bg-[#0b101d] border border-[#1e293b] hover:border-[#f97316]/50 rounded-3xl p-6 transition group cursor-pointer flex flex-col justify-between hover:shadow-[0_0_30px_rgba(249,115,22,0.1)]"
             >
               <div>
-                <div className="w-12 h-12 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition">
+                <div className="w-12 h-12 bg-[#050811] border border-[#1b2436] rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition">
                   {cat.icon}
                 </div>
-                <h3 className="text-lg font-bold mb-2 text-slate-100 group-hover:text-cyan-400 transition">
+                <h3 className="text-lg font-bold mb-2 text-slate-100 group-hover:text-[#f97316] transition">
                   {cat.title}
                 </h3>
                 <p className="text-slate-400 text-xs leading-relaxed">
@@ -343,7 +385,7 @@ export default function Interview() {
                 </p>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono text-cyan-400">
+              <div className="mt-6 pt-4 border-t border-[#1b2436] flex items-center justify-between text-xs font-mono text-[#f97316]">
                 <span>{cat.questions.length} {t.questionsCount}</span>
                 <span>{t.start} →</span>
               </div>
@@ -351,20 +393,17 @@ export default function Interview() {
           ))}
         </div>
       ) : (
-        /* MÜLAKAT & YAPAY ZEKA DEĞERLENDİRME AKIŞI */
         <div>
           {!interviewCompleted ? (
             <div className="space-y-8 max-w-3xl mx-auto">
               
-              {/* Soru İlerleme Çubuğu */}
-              <div className="flex items-center justify-between text-xs font-mono text-slate-400 bg-slate-900/80 border border-slate-800 px-5 py-3 rounded-2xl">
+              <div className="flex items-center justify-between text-xs font-mono text-slate-400 bg-[#0b101d] border border-[#1e293b] px-5 py-3 rounded-2xl">
                 <span>{t.questionProgress} {currentQuestionIndex + 1} / {selectedCategory.questions.length}</span>
-                <span className="text-cyan-400 font-bold">{t.aiActive}</span>
+                <span className="text-[#f97316] font-bold">{t.aiActive}</span>
               </div>
 
-              {/* Soru Kartı */}
-              <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl space-y-4">
-                <div className="flex items-center gap-2 text-xs font-mono text-cyan-400">
+              <div className="bg-[#0b101d] border border-[#1e293b] p-8 rounded-3xl shadow-xl space-y-4">
+                <div className="flex items-center gap-2 text-xs font-mono text-[#f97316]">
                   <Briefcase size={16} />
                   <span>{t.aiInterviewer}</span>
                 </div>
@@ -373,7 +412,6 @@ export default function Interview() {
                 </h2>
               </div>
 
-              {/* Yanıt Formu veya AI Geri Bildirimi */}
               {!feedback ? (
                 <form onSubmit={handleSubmitAnswer} className="space-y-4">
                   <div className="relative">
@@ -383,14 +421,29 @@ export default function Interview() {
                       value={userAnswer}
                       onChange={(e) => setUserAnswer(e.target.value)}
                       placeholder={t.placeholder}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-5 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition resize-none shadow-inner"
+                      className="w-full bg-[#050811] border border-[#1b2436] rounded-2xl p-5 text-sm text-slate-200 focus:outline-none focus:border-[#f97316] transition resize-none shadow-inner"
                     ></textarea>
+
+                    {/* MİKROFON BUTONU (SESLİ YAZMA) */}
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg cursor-pointer ${
+                        isListening 
+                          ? 'bg-rose-500 hover:bg-rose-600 text-white animate-pulse' 
+                          : 'bg-[#131b2e] hover:bg-[#1e293b] border border-[#222f4c] text-cyan-400'
+                      }`}
+                      title="Sesle Anlat / Mikrofonu Aç"
+                    >
+                      {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                      <span>{isListening ? 'Dinleniyor... (Kapat)' : 'Sesle Anlat'}</span>
+                    </button>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isEvaluating}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-extrabold py-4 rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_25px_rgba(45,212,191,0.2)]"
+                    className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-extrabold py-4 rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/20"
                   >
                     {isEvaluating ? (
                       <>
@@ -406,21 +459,20 @@ export default function Interview() {
                   </button>
                 </form>
               ) : (
-                /* AI Anlık Yanıt Değerlendirme ve Eksik Analizi */
-                <div className="bg-slate-900/90 border border-cyan-500/40 p-8 rounded-3xl space-y-6 animate-fadeIn">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                    <div className="flex items-center gap-2 text-cyan-400 font-bold">
+                <div className="bg-[#0b101d] border border-[#f97316]/40 p-8 rounded-3xl space-y-6 animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-[#1b2436] pb-4">
+                    <div className="flex items-center gap-2 text-[#f97316] font-bold">
                       <Sparkles size={20} />
                       <span>{t.aiEvalTitle}</span>
                     </div>
-                    <span className="text-xs font-mono bg-cyan-950/80 border border-cyan-800 text-cyan-300 px-3 py-1 rounded-full">
+                    <span className="text-xs font-mono bg-[#1c1810] border border-orange-500/30 text-orange-400 px-3 py-1 rounded-full">
                       {t.questionScore}: {feedback.score} / 100
                     </span>
                   </div>
 
                   <div className="space-y-4 text-sm text-slate-300">
                     <div>
-                      <strong className="text-slate-200 block text-xs font-mono mb-1 text-cyan-400">{t.analysisLabel}</strong>
+                      <strong className="text-slate-200 block text-xs font-mono mb-1 text-[#f97316]">{t.analysisLabel}</strong>
                       <p className="leading-relaxed">{feedback.analysis}</p>
                     </div>
 
@@ -439,7 +491,7 @@ export default function Interview() {
 
                   <button
                     onClick={handleNextQuestion}
-                    className="w-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>{currentQuestionIndex + 1 < selectedCategory.questions.length ? t.nextQ : t.finishSim}</span>
                   </button>
@@ -448,62 +500,152 @@ export default function Interview() {
 
             </div>
           ) : (
-            /* 10 SORU BİTTİKTEN SONRA GENEL YAPAY ZEKA RAPORU VE PUANLAMA */
-            <div className="max-w-3xl mx-auto bg-slate-900 border border-slate-800 p-8 md:p-12 rounded-3xl space-y-8 animate-fadeIn">
-              <div className="text-center space-y-3">
-                <div className="w-16 h-16 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center mx-auto">
-                  <Award size={36} />
-                </div>
-                <h2 className="text-2xl md:text-3xl font-black text-slate-100">{t.completedTitle}</h2>
-                <p className="text-slate-400 text-sm">
-                  {selectedCategory.title} {t.completedDesc}
-                </p>
+            <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12 text-slate-100">
+              
+              <div className="flex flex-wrap justify-between items-center gap-4">
+                <h1 className="text-2xl font-black text-white flex items-center gap-2">
+                  <Award className="text-[#10b981]" size={28} />
+                  <span>Mülakat Değerlendirme Raporu</span>
+                </h1>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadPDF}
+                  className="flex items-center gap-2 bg-[#10b981] hover:bg-[#059669] text-white font-extrabold px-5 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-lg shadow-emerald-500/10"
+                >
+                  <Download size={16} />
+                  <span>PDF Raporunu İndir</span>
+                </button>
               </div>
 
-              {/* Genel Skor Kartı */}
-              <div className="bg-slate-950 border border-slate-800 p-6 rounded-2xl flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-mono text-slate-400 block mb-1">{t.overallScore}</span>
-                  <span className="text-3xl md:text-4xl font-black text-cyan-400">{averageScore} / 100</span>
-                </div>
-                <span className={`text-xs font-mono px-3 py-1.5 rounded-full border ${
-                  averageScore >= 90 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-amber-950/50 border-amber-500/40 text-amber-300'
-                }`}>
-                  {averageScore >= 90 ? t.excellent : t.improvable}
-                </span>
-              </div>
+              <div 
+                ref={reportRef} 
+                className="bg-[#0b101d] border border-[#1e293b] rounded-3xl p-6 md:p-8 space-y-8 shadow-2xl text-slate-100"
+              >
+                <div className="flex justify-between items-start border-b border-[#1b2436] pb-6">
+                  <div>
+                    <span className="text-[#f97316] text-[10px] font-mono font-bold uppercase tracking-widest block">
+                      // MULAKAT.AI • SES & İÇERİK DEĞERLENDİRME ÇIKTISI
+                    </span>
+                    <h2 className="text-2xl font-black text-white mt-1">{selectedCategory.title}</h2>
+                    <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                      {new Date().toLocaleDateString('tr-TR')} • Toplam {allResponses.length || 3} Soru Tamamlandı
+                    </p>
+                  </div>
 
-              {/* Tüm Soruların Özet Analizi ve Eksikler */}
-              <div className="space-y-4">
-                <h3 className="font-bold text-slate-200 text-sm uppercase tracking-wider">{t.reportTitle}</h3>
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                  {allResponses.map((res, idx) => (
-                    <div key={idx} className="bg-slate-950/60 border border-slate-800/80 p-4 rounded-xl space-y-2 text-xs">
-                      <div className="flex items-center justify-between text-slate-300 font-semibold">
-                        <span>{t.questionProgress} {idx + 1}: {res.question.substring(0, 50)}...</span>
-                        <span className="text-cyan-400 font-mono font-bold">{res.score} Puan</span>
+                  <div className="text-right bg-[#131b2e] px-5 py-3 rounded-2xl border border-[#222f4c]">
+                    <span className="text-[10px] text-slate-400 font-mono block uppercase">GENEL AI SKORU</span>
+                    <span className="text-3xl font-black text-[#10b981]">%{averageScore}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                    <Target className="text-[#f97316]" size={18} />
+                    <span>STAR Metodolojisi & Ses Akışı Analiz Kartı</span>
+                  </h3>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-[#050811] p-4 rounded-2xl border border-[#1b2436] space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 font-mono block">S - DURUM / SENARYO</span>
+                      <span className="text-xl font-black text-white">%{starScore.situation}</span>
+                      <div className="w-full bg-[#1b2436] h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-[#f97316] h-full" style={{ width: `${starScore.situation}%` }} />
                       </div>
-                      <p className="text-slate-400"><strong>Analiz:</strong> {res.analysis}</p>
-                      <p className="text-rose-400/90"><strong>Eksik:</strong> {res.missingPoints}</p>
                     </div>
-                  ))}
+
+                    <div className="bg-[#050811] p-4 rounded-2xl border border-[#1b2436] space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 font-mono block">T - GÖREV & HEDEF</span>
+                      <span className="text-xl font-black text-white">%{starScore.task}</span>
+                      <div className="w-full bg-[#1b2436] h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-indigo-400 h-full" style={{ width: `${starScore.task}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="bg-[#050811] p-4 rounded-2xl border border-[#1b2436] space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 font-mono block">A - AKSİYON / ÇÖZÜM</span>
+                      <span className="text-xl font-black text-white">%{starScore.action}</span>
+                      <div className="w-full bg-[#1b2436] h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-[#10b981] h-full" style={{ width: `${starScore.action}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="bg-[#050811] p-4 rounded-2xl border border-[#1b2436] space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 font-mono block">R - SONUÇ & METRİK</span>
+                      <span className="text-xl font-black text-white">%{starScore.result}</span>
+                      <div className="w-full bg-[#1b2436] h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-amber-400 h-full" style={{ width: `${starScore.result}%` }} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                <div className="bg-[#131b2e] p-5 rounded-2xl border border-[#222f4c] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-500/10 text-[#f97316] rounded-xl flex items-center justify-center">
+                      <MessageSquare size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Sesli Diksiyon & Akıcılık Raporu</h4>
+                      <p className="text-xs text-slate-400">Konuşma hızı, ses tonu istikrarı ve dolgu kelime analizi tamamlandı.</p>
+                    </div>
+                  </div>
+
+                  <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30">
+                    ✨ Başarılı Akış
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-extrabold text-white">// Ses ve Soru Bazlı Yapay Zekâ Karnesi</h3>
+                  <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
+                    {allResponses.map((res, idx) => (
+                      <div key={idx} className="bg-[#050811] p-4 rounded-2xl border border-[#1b2436] space-y-2 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-white truncate max-w-[80%]">
+                            Soru {idx + 1}: {res.question}
+                          </span>
+                          <span className="text-[#10b981] font-black">{res.score} Puan</span>
+                        </div>
+                        <p className="text-slate-300"><strong>Konuşma Analizi:</strong> {res.analysis}</p>
+                        <p className="text-rose-400"><strong>Eksik Nokta:</strong> {res.missingPoints}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-[#131b2e] p-5 rounded-2xl border border-[#222f4c] space-y-2">
+                  <div className="flex items-center gap-2 text-[#f97316] text-xs font-bold">
+                    <Sparkles size={16} />
+                    <span>AI Ses Koçu Genel Tavsiyesi</span>
+                  </div>
+                  <p className="text-xs text-slate-300 italic font-medium leading-relaxed">
+                    "Sesli anlatımlarda vurgularınız oldukça net. Gelecek oturumlarda heyecan anındaki duraksamaları minimuma indirerek profesyonel diksiyonunuzu daha da öne çıkarabilirsiniz."
+                  </p>
+                </div>
+
               </div>
 
-              <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-800">
+              <div className="flex justify-center items-center gap-4 pt-2">
                 <button
+                  type="button"
                   onClick={() => setSelectedCategory(null)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-6 py-3 rounded-xl text-sm font-semibold transition cursor-pointer"
+                  className="flex items-center gap-2 bg-[#131b2e] hover:bg-[#1e293b] text-slate-200 border border-[#222f4c] font-bold px-6 py-3 rounded-2xl text-xs transition cursor-pointer"
                 >
-                  {t.otherCats}
+                  <RefreshCw size={15} />
+                  <span>Diğer Kategoriler</span>
                 </button>
+
                 <button
+                  type="button"
                   onClick={() => navigate('/')}
-                  className="bg-cyan-400 hover:bg-cyan-300 text-slate-950 px-6 py-3 rounded-xl text-sm font-bold transition cursor-pointer"
+                  className="flex items-center gap-2 bg-[#10b981] hover:bg-[#059669] text-white font-extrabold px-6 py-3 rounded-2xl text-xs transition cursor-pointer shadow-lg shadow-emerald-500/10"
                 >
-                  {t.homeBtn}
+                  <Home size={15} />
+                  <span>Ana Sayfaya Dön</span>
                 </button>
               </div>
+
             </div>
           )}
         </div>

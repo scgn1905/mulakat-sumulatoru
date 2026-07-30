@@ -1,25 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../context/ThemeContext';
 import { 
   User, 
   Briefcase, 
   Sliders, 
   Bell, 
-  Shield, 
   Save, 
   CheckCircle2, 
   Sparkles,
-  Award,
-  Volume2
+  Volume2,
+  Palette,
+  Check
 } from 'lucide-react';
 
 export default function Settings() {
   const { t } = useTranslation();
+  const { colorTheme, setColorTheme } = useTheme();
   
-  // Ayar state'leri
   const [settingsData, setSettingsData] = useState({
     fullName: 'Seçgin Yıldırım',
-    email: 'seçgin.yildirim@example.com',
+    email: 'secgin.yildirim@example.com',
     defaultRole: 'software_engineer',
     experienceLevel: 'mid',
     aiInterviewerTone: 'professional',
@@ -31,12 +32,37 @@ export default function Settings() {
 
   const [saved, setSaved] = useState(false);
 
+  // 3 ANA RENK PALETİ
+  const colorOptions = [
+    { id: 'orange', name: 'Ateş Turuncusu', hex: '#f97316' },
+    { id: 'blue', name: 'Safir Mavi', hex: '#2563eb' },
+    { id: 'emerald', name: 'Zümrüt Yeşil', hex: '#10b981' }
+  ];
+
+  useEffect(() => {
+    const savedPreferences = localStorage.getItem('userPreferences');
+    if (savedPreferences) {
+      try {
+        const parsed = JSON.parse(savedPreferences);
+        setSettingsData(prev => ({ ...prev, ...parsed }));
+      } catch (error) {
+        console.error("Ayarlar yüklenirken hata oluştu:", error);
+      }
+    }
+  }, []);
+
   const handleChange = (field, value) => {
     setSettingsData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSave = (e) => {
     e.preventDefault();
+    localStorage.setItem('userPreferences', JSON.stringify(settingsData));
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    currentUser.name = settingsData.fullName;
+    currentUser.email = settingsData.email;
+    localStorage.setItem('user', JSON.stringify(currentUser));
+
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -65,7 +91,7 @@ export default function Settings() {
         {/* 1. PROFİL BİLGİLERİ */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-            <div className="w-10 h-10 bg-cyan-500/10 text-cyan-400 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
               <User size={20} />
             </div>
             <div>
@@ -100,7 +126,7 @@ export default function Settings() {
         {/* 2. VARSAYILAN MÜLAKAT TERCİHLERİ */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-            <div className="w-10 h-10 bg-teal-500/10 text-teal-400 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
               <Briefcase size={20} />
             </div>
             <div>
@@ -144,7 +170,7 @@ export default function Settings() {
         {/* 3. YAPAY ZEKÂ VE RİSK/TON AYARLARI */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-            <div className="w-10 h-10 bg-indigo-500/10 text-indigo-400 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
               <Sliders size={20} />
             </div>
             <div>
@@ -201,10 +227,55 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 4. BİLDİRİMLER VE SESLER */}
+        {/* 4. GÖRÜNÜM VE TEMA TERCİHLERİ (SADECE VURGU RENK PALETİ) */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-            <div className="w-10 h-10 bg-amber-500/10 text-amber-400 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
+              <Palette size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">Görünüm ve Tema Tercihleri</h2>
+              <p className="text-xs text-slate-400">Arayüz renk paletini kişiselleştirin.</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block text-xs font-mono text-slate-400">Vurgu Rengi Paleti</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {colorOptions.map((color) => {
+                const isSelected = colorTheme === color.id || (color.id === 'orange' && colorTheme === 'cyan');
+                return (
+                  <button
+                    key={color.id}
+                    type="button"
+                    onClick={() => setColorTheme(color.id)}
+                    style={{
+                      borderColor: isSelected ? color.hex : undefined,
+                      backgroundColor: isSelected ? `${color.hex}20` : undefined
+                    }}
+                    className={`flex items-center justify-between p-4 rounded-2xl border transition cursor-pointer bg-slate-950 ${
+                      isSelected ? 'border-2 font-bold' : 'border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-5 h-5 rounded-full shadow-md shrink-0" 
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      <span className="text-xs font-semibold text-slate-200">{color.name}</span>
+                    </div>
+                    {isSelected && <Check size={16} style={{ color: color.hex }} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 5. BİLDİRİMLER VE SESLER */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
+            <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
               <Bell size={20} />
             </div>
             <div>
@@ -232,7 +303,7 @@ export default function Settings() {
 
             <label className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
               <div className="flex items-center gap-3">
-                <Volume2 size={18} className="text-teal-400" />
+                <Volume2 size={18} className="text-cyan-400" />
                 <div>
                   <span className="text-sm font-semibold block text-slate-200">Mülakat Ses Efektleri</span>
                   <span className="text-xs text-slate-400">Simülasyon içi geri sayım, başarı ve geçiş sesleri.</span>
@@ -252,7 +323,7 @@ export default function Settings() {
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            className="flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 font-extrabold px-8 py-4 rounded-2xl shadow-[0_0_25px_rgba(45,212,191,0.3)] transition transform hover:-translate-y-0.5 cursor-pointer"
+            className="flex items-center gap-2 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold px-8 py-4 rounded-2xl shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer"
           >
             <Save size={18} />
             <span>{t('saveChanges', 'Değişiklikleri Kaydet')}</span>

@@ -2,4 +2,104 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
+  background-color: #0b101d !important;
+  color: #f8fafc !important;
+}
+
+body {
+  background-color: #0b101d !important;
+  color: #f8fafc !important;
+}
+
+/* ==========================================================
+   DİNAMİK VURGU RENK TEMA DEĞİŞKENLERİ
+   ========================================================== */
+
+/* Varsayılan / Ateş Turuncusu Tema */
+:root, [data-theme='orange'], [data-theme='cyan'] {
+  --primary-color: #f97316 !important; /* Canlı Turuncu */
+  --primary-hover: #ea580c !important;
+  --primary-bg: rgba(249, 115, 22, 0.15) !important;
+}
+
+/* Safir Mavi Tema */
+[data-theme='blue'] {
+  --primary-color: #2563eb !important;
+  --primary-hover: #1d4ed8 !important;
+  --primary-bg: rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Zümrüt Yeşil Tema */
+[data-theme='emerald'] {
+  --primary-color: #10b981 !important;
+  --primary-hover: #047857 !important;
+  --primary-bg: rgba(16, 185, 129, 0.15) !important;
+}
+
+/* ==========================================================
+   SABİT DİNAMİK VURGU RENKLERİ (TÜM BİLEŞENLERE UYGULAMA)
+   ========================================================== */
+
+/* Metin Renkleri */
+.text-cyan-400, .text-cyan-500, .text-cyan-600,
+.text-orange-400, .text-orange-500, .text-orange-600,
+.text-teal-400, .text-teal-500 {
+  color: var(--primary-color, #f97316) !important;
+}
+
+/* Arka Plan Renkleri (Butonlar, Rozetler vb.) */
+.bg-cyan-400, .bg-cyan-500, .bg-cyan-600,
+.bg-orange-400, .bg-orange-500, .bg-orange-600,
+.bg-teal-400, .bg-teal-500 {
+  background-color: var(--primary-color, #f97316) !important;
+  color: #ffffff !important;
+}
+
+/* Hover Efektleri */
+.hover\:bg-cyan-300:hover, .hover\:bg-cyan-400:hover, .hover\:bg-cyan-500:hover,
+.hover\:bg-orange-400:hover, .hover\:bg-orange-500:hover {
+  background-color: var(--primary-hover, #ea580c) !important;
+}
+
+/* Kenarlık / Çerçeve Renkleri */
+.border-cyan-400, .border-cyan-500, .border-cyan-600,
+.border-orange-400, .border-orange-500, .border-orange-600 {
+  border-color: var(--primary-color, #f97316) !important;
+}
+
+/* Şeffaf Vurgulu Arka Planlar */
+.bg-cyan-500\/10, .bg-cyan-500\/20, .bg-cyan-400\/10,
+.bg-orange-500\/10, .bg-orange-500\/20 {
+  background-color: var(--primary-bg, rgba(249, 115, 22, 0.15)) !important;
+}
+
+/* Gradient Butonlar */
+.bg-gradient-to-r.from-cyan-400.to-teal-400,
+.bg-gradient-to-r.from-cyan-500.to-teal-400,
+.bg-gradient-to-r.from-teal-300.via-cyan-400.to-indigo-400 {
+  background: var(--primary-color, #f97316) !important;
+  color: #ffffff !important;
+}
+
+/* ==========================================================
+   TEMİZ VE KONTRASTLI KART / METİN TANIMLARI
+   ========================================================== */
+
+h1, h2, h3, h4, h5, h6 {
+  color: #ffffff !important;
+}
+
+p, label, span {
+  color: #cbd5e1;
+}
+
+input, select, textarea {
+  background-color: #050811 !important;
+  border: 1px solid #1b2436 !important;
+  color: #f8fafc !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #64748b !important;
 }
