@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop'; // <-- YENİ EKLENDİ
+import AIBotAssistant from './components/AIBotAssistant'; // <-- AI ASİSTAN MASKOTU EKLENDİ
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -29,7 +30,7 @@ const ProtectedRoute = ({ children }) => {
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between relative">
       <Navbar />
 
       {/* SAYFA DEĞİŞİKLİĞİNDE OTOMATİK EN ÜSTE VEYA İLGİLİ ALANA KAYDIRIR */}
@@ -75,6 +76,9 @@ export default function App() {
       </main>
 
       <Footer />
+
+      {/* SİTENİN HER YERİNDE GEZEN ANİMASYONLU YARDIM MASKOTU */}
+      <AIBotAssistant />
     </div>
   );
 }

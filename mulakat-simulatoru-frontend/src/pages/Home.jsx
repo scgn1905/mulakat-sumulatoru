@@ -14,7 +14,10 @@ import {
   Flame,
   UserCheck,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  Terminal,
+  Cpu,
+  Zap
 } from 'lucide-react';
 
 export default function Home() {
@@ -22,6 +25,47 @@ export default function Home() {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState(null);
   const [currentScenario, setCurrentScenario] = useState(0);
+
+  // Terminal animasyonu için simüle edilmiş AI akış metinleri
+  const terminalLines = [
+    "AI Mülakat Motoru başlatılıyor...",
+    "Kullanıcı profil analizi tamamlandı: Full Stack Developer",
+    "STAR Metodolojisi ve Diksiyon modülü aktif...",
+    "Yüksek performanslı kurumsal mülakat simülasyonuna hazırsınız."
+  ];
+
+  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+  const [displayedText, setDisplayedText] = useState('');
+
+  useEffect(() => {
+    let timeout;
+    if (currentLineIndex < terminalLines.length) {
+      const targetText = terminalLines[currentLineIndex];
+      let charIndex = 0;
+
+      const interval = setInterval(() => {
+        if (charIndex <= targetText.length) {
+          setDisplayedText(targetText.substring(0, charIndex));
+          charIndex++;
+        } else {
+          clearInterval(interval);
+          timeout = setTimeout(() => {
+            setCurrentLineIndex(prev => prev + 1);
+          }, 1500);
+        }
+      }, 40);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    } else {
+      const resetTimeout = setTimeout(() => {
+        setCurrentLineIndex(0);
+      }, 3000);
+      return () => clearTimeout(resetTimeout);
+    }
+  }, [currentLineIndex]);
 
   const handleStartInterview = () => {
     const token = localStorage.getItem('token');
@@ -176,8 +220,43 @@ export default function Home() {
           </div>
         </div>
 
+        {/* CANLI TERMINAL / AI AKIŞ ANİMASYONU */}
+        <div className="mt-12 w-[90%] max-w-4xl bg-white/90 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 rounded-3xl p-5 shadow-xl dark:shadow-2xl backdrop-blur-2xl relative overflow-hidden mx-auto z-10 transition-colors">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-rose-500/80"></div>
+              <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
+              <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-mono text-slate-500 dark:text-slate-400">
+              <Terminal size={14} className="text-cyan-600 dark:text-cyan-400" />
+              <span>mulakat-ai-core.sh</span>
+            </div>
+          </div>
+
+          <div className="bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl h-28 flex flex-col justify-between font-mono text-xs shadow-inner">
+            <div className="space-y-1">
+              <div className="text-slate-400 dark:text-slate-500 text-[11px]">// Yapay Zekâ Aktif Oturum Logları</div>
+              <div className="text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <span>❯</span>
+                <span className="text-slate-800 dark:text-slate-200">{displayedText}</span>
+                <span className="w-2 h-3.5 bg-cyan-600 dark:text-cyan-400 animate-pulse" />
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 dark:border-slate-800 pt-2 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
+                <Cpu size={12} /> Model: GPT-Enterprise
+              </span>
+              <span className="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/20 font-bold font-mono">
+                CANLI & GÜVENLİ
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* DEMO KARTI */}
-        <div className="mt-14 w-[90%] max-w-4xl bg-white/90 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 rounded-3xl p-4 md:p-6 shadow-xl dark:shadow-2xl backdrop-blur-2xl relative overflow-hidden mx-auto z-10 transition-colors">
+        <div className="mt-8 w-[90%] max-w-4xl bg-white/90 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 rounded-3xl p-4 md:p-6 shadow-xl dark:shadow-2xl backdrop-blur-2xl relative overflow-hidden mx-auto z-10 transition-colors">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-rose-500/80"></div>
@@ -190,6 +269,7 @@ export default function Home() {
               <RefreshCw size={12} className="animate-spin text-cyan-600 dark:text-cyan-400" />
               {active.tag}
             </span>
+
           </div>
 
           <div className="space-y-4 text-xs md:text-sm min-h-[190px] flex flex-col justify-between">
@@ -236,7 +316,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ÖZELLİKLER SECTION */}
+      {/* ÖZELLİKLER SECTION (6 PROFESYONEL ÖZELLİK KARTI) */}
       <section id="features" className="scroll-mt-24 px-6 md:px-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
           <div>
@@ -247,7 +327,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-cyan-500/40 transition group shadow-sm dark:shadow-none">
             <div className="w-12 h-12 bg-cyan-100 dark:bg-cyan-400/10 text-cyan-600 dark:text-cyan-400 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition">
               <UserCheck size={26} />
@@ -270,6 +350,30 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">{t('feat3Title', 'Gelişim Raporu')}</h3>
             <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{t('feat3Desc', 'İletişim diliniz ve güçlü yönleriniz detaylı raporlarla sunulur.')}</p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-amber-500/40 transition group shadow-sm dark:shadow-none">
+            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition">
+              <MessageSquare size={26} />
+            </div>
+            <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">Sesli Yanıt & Diksiyon</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Mikrofonunuzu kullanarak sesli yanıt verin; yapay zekâ ses tonunuzu ve akıcılığınızı anında analiz etsin.</p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-emerald-500/40 transition group shadow-sm dark:shadow-none">
+            <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition">
+              <Sparkles size={26} />
+            </div>
+            <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">PDF Mülakat Raporu</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">Tamamladığınız mülakatların tüm detaylı analiz karnesini tek tıkla profesyonel PDF formatında indirin.</p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 hover:border-purple-500/40 transition group shadow-sm dark:shadow-none">
+            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-400/10 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition">
+              <Flame size={26} />
+            </div>
+            <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">Türkçe & İngilizce Mod</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">İster uluslararası küresel mülakatlar için İngilizce, ister ana dilinizde Türkçe simülasyonlar gerçekleştirin.</p>
           </div>
         </div>
       </section>
