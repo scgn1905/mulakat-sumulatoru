@@ -79,6 +79,23 @@ export default function Home() {
     }
   };
 
+  // Fiyatlandırma yönlendirmesi: Pro için ödeme sayfasına, starter için mülakata veya kayıt sayfasına
+  const handlePricingAction = (planType) => {
+    const token = localStorage.getItem('token');
+    const isValidToken = token && token !== 'null' && token !== 'undefined' && token.trim() !== '';
+
+    if (isValidToken) {
+      if (planType === 'pro') {
+        navigate('/payment'); // Pro seçildiyse doğrudan ödeme/abone sayfasına yönlendirir
+      } else {
+        navigate('/interview'); // Starter veya ücretsiz paket için mülakat ekranına yönlendirir
+      }
+    } else {
+      localStorage.removeItem('token');
+      navigate('/register'); // Giriş yapılmamışsa kayıt sayfasına atar
+    }
+  };
+
   const scenarios = [
     {
       role: t('scenario1Role', 'KİDEMLİ İK YÖNETİCİSİ (AI)'),
@@ -251,6 +268,7 @@ export default function Home() {
               <span className="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/20 font-bold font-mono">
                 CANLI & GÜVENLİ
               </span>
+
             </div>
           </div>
         </div>
@@ -400,9 +418,12 @@ export default function Home() {
                 <li className="flex items-center gap-2.5"><CheckCircle2 size={16} className="text-cyan-600 dark:text-cyan-400" /> {t('starterFeat2', 'Temel Yetkinlik Puanlaması')}</li>
               </ul>
             </div>
-            <Link to="/register" className="mt-8 text-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold py-3.5 rounded-xl text-sm transition border border-slate-200 dark:border-transparent">
+            <button 
+              onClick={() => handlePricingAction('starter')}
+              className="mt-8 text-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold py-3.5 rounded-xl text-sm transition border border-slate-200 dark:border-transparent cursor-pointer w-full"
+            >
               {t('register', 'Kayıt Ol')}
-            </Link>
+            </button>
           </div>
 
           {/* PRO PASS */}
@@ -420,9 +441,12 @@ export default function Home() {
                 <li className="flex items-center gap-2.5"><CheckCircle2 size={16} className="text-cyan-600 dark:text-cyan-400" /> {t('proFeat2', 'İngilizce Mülakat & Akıcılık Analizi')}</li>
               </ul>
             </div>
-            <Link to="/register" className="mt-8 text-center bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-400 dark:hover:bg-cyan-300 text-white dark:text-slate-950 font-bold py-3.5 rounded-xl transition shadow-md">
+            <button 
+              onClick={() => handlePricingAction('pro')}
+              className="mt-8 text-center bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-400 dark:hover:bg-cyan-300 text-white dark:text-slate-950 font-bold py-3.5 rounded-xl transition shadow-md cursor-pointer w-full"
+            >
               {t('upgradePro', "Pro'ya Geç")}
-            </Link>
+            </button>
           </div>
         </div>
       </section>

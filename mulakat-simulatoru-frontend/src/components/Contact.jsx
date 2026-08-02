@@ -29,17 +29,39 @@ export default function Contact() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch('http://localhost:5000/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: `[Konu: ${formData.subject}] ${formData.message}`
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Mesaj gönderilemedi.");
+      }
+
       setSubmitted(true);
       setFormData({ name: '', email: '', subject: 'general', message: '' });
       
       setTimeout(() => setSubmitted(false), 4000);
-    }, 1000);
+    } catch (error) {
+      console.error("İletişim hatası:", error);
+      alert(error.message || "Bir hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

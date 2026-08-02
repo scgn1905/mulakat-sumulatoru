@@ -246,6 +246,7 @@ export default function Interview() {
   };
 
   // --- KATEGORİ SEÇİldİĞİNDE BACKEND'DEN SORULARI ÇEKME ---
+  // --- KATEGORİ SEÇİLDİĞİNDE SORULARI AYARLAMA ---
   const handleSelectCategory = async (cat) => {
     setSelectedCategory(cat);
     setCurrentQuestionIndex(0);
@@ -256,29 +257,60 @@ export default function Interview() {
     stopListening();
     setLoadingQuestions(true);
 
+    // Kategoriye özel fallback/yedek zengin soru havuzu (Garantili 4'er soru)
+    const fallbackQuestions = {
+      frontend: [
+        "React bileşenlerinde state ve props kavramlarını karşılaştırarak örnek veriniz.",
+        "useEffect hook'u hangi amaçlarla kullanılır ve cleanup fonksiyonu neden önemlidir?",
+        "Büyük ölçekli bir React uygulamasında performans optimizasyonu için hangi stratejileri izlersiniz?",
+        "Virtual DOM mekanizması nasıl çalışır ve tarayıcı performansına katkısı nedir?"
+      ],
+      backend: [
+        "Node.js event loop mekanizmasını ve asenkron I/O işlemlerinin nasıl yönetildiğini açıklayınız.",
+        "RESTful API tasarlarken dikkat edilmesi gereken en temel prensipler nelerdir?",
+        "İlişkisel veritabanlarında index (indeks) kullanımı sorgu performansını nasıl etkiler?",
+        "Mikroservis mimarisinin monolitik yapılara göre avantajları ve dezavantajları nelerdir?"
+      ],
+      hr: [
+        "Geçmiş tecrübelerinizde ekibinizle ciddi bir fikir ayrılığı yaşadığınız kriz anını STAR metoduna göre anlatır mısınız?",
+        "Kendi kariyerinizde geliştirmek istediğiniz zayıf yönünüz nedir ve bunu aşmak için ne gibi adımlar atıyorsunuz?",
+        "Çok yoğun bir çalışma temposunda ve kısıtlı sürede birden fazla öncelikli işi nasıl yönetirsiniz?"
+      ],
+      product: [
+        "MVP (Minimum Viable Product) geliştirme sürecinde ilk özellikleri belirlerken hangi kriterleri baz alırsınız?",
+        "Müşteri geri bildirimleri ile yazılım ekibinin teknik borç temizleme talebi çakıştığında nasıl bir yol izlersiniz?"
+      ],
+      leadership: [
+        "Ekip içinde düşük performans gösteren bir geliştiriciye karşı lider olarak yaklaşımınız nasıl olur?",
+        "Teknik kararlar alırken ekip içi mutabakat (consensus) sağlanamadığında inisiyatifi nasıl ele alırsınız?"
+      ],
+      english: [
+        "Could you describe a challenging technical project you managed and how you overcame obstacles?",
+        "Where do you see your professional career path and technical skills in the next five years?"
+      ],
+      finance: [
+        "Eksik veya belirsiz finansal veri setleriyle çalışırken risk analizini nasıl gerçekleştirirsiniz?",
+        "Yatırımın geri dönüş süresi (ROI) hesaplamalarında maliyet optimizasyonunu nasıl sağlarsınız?"
+      ]
+    };
+
     try {
       const response = await fetch(`http://localhost:5000/api/questions/${cat.id}`);
       if (response.ok) {
         const data = await response.json();
         if (data && data.length > 0) {
-          setQuestions(data.map(q => q.question_text));
+          // Gelen soruları karıştırıp (shuffle) diziye aktarıyoruz
+          const fetchedTexts = data.map(q => q.question_text);
+          setQuestions(fetchedTexts);
         } else {
-          setQuestions([
-            "Bu alandaki en büyük teknik tecrübenizi ve karşılaştığınız zorlukları detaylıca anlatır mısınız?",
-            "Şirketimize katıldığınızda ilk 3 ay içerisinde hangi süreçleri optimize etmeyi hedeflersiniz?"
-          ]);
+          setQuestions(fallbackQuestions[cat.id] || fallbackQuestions.frontend);
         }
       } else {
-        setQuestions([
-          "Bu alandaki teknik yetkinliklerinizi ve projelerinizi özetler misiniz?",
-          "Kriz anlarında stres yönetimi ve problem çözme yaklaşımınız nasıldır?"
-        ]);
+        setQuestions(fallbackQuestions[cat.id] || fallbackQuestions.frontend);
       }
     } catch (err) {
-      console.error("Sorular çekilemedi:", err);
-      setQuestions([
-        "Teknik altyapınız ve bugüne kadar yönettiğiniz projeler hakkında bilgi verir misiniz?"
-      ]);
+      console.error("Sorular çekilemedi, yedek sorular yükleniyor:", err);
+      setQuestions(fallbackQuestions[cat.id] || fallbackQuestions.frontend);
     } finally {
       setLoadingQuestions(false);
     }

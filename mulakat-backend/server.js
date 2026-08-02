@@ -3,12 +3,14 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { GoogleGenAI } = require('@google/genai');
 const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'mulakat_gizli_anahtar_2026';
-
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 app.use(cors());
 app.use(express.json());
 
@@ -28,6 +30,72 @@ const verifyToken = (req, res, next) => {
         next();
     });
 };
+
+// --- İLETİŞİM MESAJI KAYDETME ENDPOINT'İ (EKSİK OLAN KISIM EKLENDİ) ---
+app.post('/api/contact', async (req, res) => {
+    const { name, email, message } = req.body;
+    if (!name || !email || !message) {
+        return res.status(400).json({ error: "Lütfen tüm alanları doldurun." });
+    }
+    try {
+        await db.query("INSERT INTO contact_messages (name, email, message) VALUES (?, ?, ?)", [name, email, message]);
+        res.status(201).json({ message: "Mesajınız başarıyla gönderildi!" });
+    } catch (err) {
+        console.error("İletişim hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
+// --- ŞİFRE SIFIRLAMA TALEBİ ---
+app.post('/api/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ error: "Lütfen e-posta adresinizi girin." });
+    }
+
+    try {
+        const [users] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+        if (users.length === 0) {
+            return res.json({ message: "Eğer bu e-posta adresi sistemde kayıtlıysa şifre sıfırlama bağlantısı gönderilmiştir." });
+        }
+
+        const resetToken = crypto.randomBytes(32).toString('hex');
+
+        await db.query("INSERT INTO password_resets (email, token) VALUES (?, ?)", [email, resetToken]);
+
+        console.log(`🔐 ŞİFRE SIFIRLAMA LİNKİ (Simülasyon): http://localhost:5175/reset-password?token=${resetToken}`);
+
+        res.json({ message: "Şifre sıfırlama talimatları e-posta adresinize gönderildi. (Konsolu kontrol edin)" });
+    } catch (err) {
+        console.error("Şifre sıfırlama hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
+// --- YENİ ŞİFREYİ KAYDETME ---
+app.post('/api/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+        return res.status(400).json({ error: "Eksik bilgi girdiniz." });
+    }
+
+    try {
+        const [rows] = await db.query("SELECT * FROM password_resets WHERE token = ? ORDER BY created_at DESC LIMIT 1", [token]);
+        if (rows.length === 0) {
+            return res.status(400).json({ error: "Geçersiz veya süresi dolmuş token." });
+        }
+
+        const resetRecord = rows[0];
+
+        await db.query("UPDATE users SET password = ? WHERE email = ?", [newPassword, resetRecord.email]);
+        await db.query("DELETE FROM password_resets WHERE email = ?", [resetRecord.email]);
+
+        res.json({ message: "Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz." });
+    } catch (err) {
+        console.error("Şifre yenileme hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
 
 // --- KRİTİK GÜNCELLEME: ROTA EN BAŞA ALINDI ---
 app.put('/api/settings', verifyToken, async (req, res) => {
@@ -99,6 +167,9 @@ app.put('/api/change-password', verifyToken, async (req, res) => {
 
 const initDatabase = async () => {
     try {
+        // SORULARI SIFIRLAMAK İÇİN TABLOYU YENİDEN OLUŞTURULACAK ŞEKİLDE SİLİYORUZ
+        await db.query(`DROP TABLE IF EXISTS interview_questions`);
+
         await db.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -108,13 +179,22 @@ const initDatabase = async () => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        // YENİ EKLENECEK TABLO BURASI:
+        // TABLO:
         await db.query(`
             CREATE TABLE IF NOT EXISTS contact_messages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL,
                 message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) NOT NULL,
+                token VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -153,23 +233,49 @@ const initDatabase = async () => {
             )
         `);
 
-        console.log("Tablolar (users, questions, results, settings) eksiksiz hazır.");
+        console.log("Tablolar eksiksiz hazır.");
 
         const [rows] = await db.query("SELECT COUNT(*) as count FROM interview_questions");
         if (rows[0].count === 0) {
             const defaultQuestions = [
-                ['java', 'Java dilinde OOP (Nesne Yönelimli Programlama) prensiplerini açıklayınız.'],
-                ['java', 'Spring Boot nedir ve avantajları nelerdir?'],
-                ['react', 'React bileşenlerinde state ve props kavramlarını karşılaştırınız.'],
-                ['react', 'useEffect hook\'u ne amaçla kullanılır? Örnek veriniz.'],
-                ['hr', 'Kendinizden bahseder misiniz? En güçlü yönünüz nedir?'],
-                ['hr', 'Stresli bir durumla karşılaştığınızda nasıl başa çıkarsınız?']
+                // Frontend
+                ['frontend', 'React bileşenlerinde state ve props kavramlarını karşılaştırarak örnek veriniz.'],
+                ['frontend', 'useEffect hook\'u hangi amaçlarla kullanılır ve cleanup fonksiyonu neden önemlidir?'],
+                ['frontend', 'Büyük ölçekli bir React uygulamasında performans optimizasyonu için hangi stratejileri izlersiniz?'],
+                ['frontend', 'Virtual DOM mekanizması nasıl çalışır ve tarayıcı performansına katkısı nedir?'],
+                
+                // Backend
+                ['backend', 'Node.js event loop mekanizmasını ve asenkron I/O işlemlerinin nasıl yönetildiğini açıklayınız.'],
+                ['backend', 'RESTful API tasarlarken dikkat edilmesi gereken en temel prensipler nelerdir?'],
+                ['backend', 'İlişkisel veritabanlarında index (indeks) kullanımı sorgu performansını nasıl etkiler?'],
+                ['backend', 'Mikroservis mimarisinin monolitik yapılara göre avantajları ve dezavantajları nelerdir?'],
+
+                // İK & Davranışsal (hr)
+                ['hr', 'Geçmiş tecrübelerinizde ekibinizle ciddi bir fikir ayrılığı yaşadığınız kriz anını STAR metoduna göre anlatır misiniz?'],
+                ['hr', 'Kendi kariyerinizde geliştirmek istediğiniz zayıf yönünüz nedir ve bunu aşmak için ne gibi adımlar atıyorsunuz?'],
+                ['hr', 'Çok yoğun bir çalışma temposunda ve kısıtlı sürede birden fazla öncelikli işi nasıl yönetirsiniz?'],
+
+                // Ürün Yönetimi (product)
+                ['product', 'MVP (Minimum Viable Product) geliştirme sürecinde ilk özellikleri belirlerken hangi kriterleri baz alırsınız?'],
+                ['product', 'Müşteri geri bildirimleri ile yazılım ekibinin teknik borç temizleme talebi çakıştığında nasıl bir yol izlersiniz?'],
+
+                // Takım Lideri (leadership)
+                ['leadership', 'Ekip içinde düşük performans gösteren bir geliştiriciye karşı lider olarak yaklaşımınız nasıl olur?'],
+                ['leadership', 'Teknik kararlar alırken ekip içi mutabakat (consensus) sağlanamadığında inisiyatifi nasıl ele alırsınız?'],
+
+                // İngilizce Mülakat (english)
+                ['english', 'Could you describe a challenging technical project you managed and how you overcame obstacles?'],
+                ['english', 'Where do you see your professional career path and technical skills in the next five years?'],
+
+                // Finans (finance)
+                ['finance', 'Eksik veya belirsiz finansal veri setleriyle çalışırken risk analizini nasıl gerçekleştirirsiniz?'],
+                ['finance', 'Yatırımın geri dönüş süresi (ROI) hesaplamalarında maliyet optimizasyonunu nasıl sağlarsınız?']
             ];
 
             for (let q of defaultQuestions) {
                 await db.query("INSERT INTO interview_questions (category_id, question_text) VALUES (?, ?)", [q[0], q[1]]);
             }
-            console.log("Varsayılan mülakat soruları eklendi.");
+            console.log("Genişletilmiş mülakat soruları eklendi.");
         }
     } catch (err) {
         console.error("Veritabanı başlatılırken hata:", err);
@@ -231,7 +337,6 @@ app.get('/api/profile', verifyToken, async (req, res) => {
     }
 });
 
-// --- YENİ EKLENEN: KULLANICI PROFİL (AD VE E-POSTA) GÜNCELLEME ENDPOINT'İ ---
 app.put('/api/profile', verifyToken, async (req, res) => {
     const { name, email } = req.body;
     
@@ -272,9 +377,10 @@ app.get('/api/settings', verifyToken, async (req, res) => {
 app.get('/api/questions/:categoryId', async (req, res) => {
     const { categoryId } = req.params;
     try {
-        const [rows] = await db.query("SELECT * FROM interview_questions WHERE category_id = ?", [categoryId]);
+        const [rows] = await db.query("SELECT * FROM interview_questions WHERE category_id = ? ORDER BY RAND()", [categoryId]);
         res.json(rows);
     } catch (err) {
+        console.error("Soru getirme hatası:", err);
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -332,11 +438,45 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 app.post('/api/evaluate', verifyToken, async (req, res) => {
-    const { answer } = req.body;
-    const wordCount = answer ? answer.trim().split(/\s+/).length : 5;
-    let score = Math.min(100, Math.max(40, wordCount * 4));
-    res.json({ score, feedback: "Yapay zeka analizi başarıyla tamamlandı." });
+    const { question, answer } = req.body;
+
+    if (!answer) {
+        return res.status(400).json({ error: "Değerlendirilecek cevap bulunamadı." });
+    }
+
+    try {
+        const prompt = `Sen kıdemli bir teknik mülakat uzmanısın. 
+        Mülakat Sorusu: "${question}"
+        Adayın Verdiği Yanıt: "${answer}"
+        
+        KURALLAR:
+        1. Eğer aday saçma sapan, alakasız, çok kısa veya sadece tek bir karakter/nokta yazdıysa, puanı KESİNLİKLE 0 ile 20 arasında ver ve geri bildirimde cevabın geçersiz olduğunu sertçe belirt.
+        2. Yanıtı teknik doğruluk ve STAR metoduna göre ciddi şekilde değerlendir.
+        
+        Yanıtını KESİNLİKLE şu JSON formatında döndür, başka hiçbir metin ekleme:
+        {
+          "score": [0 ile 100 arasında tam sayı],
+          "feedback": "[Detaylı geri bildirim metni]"
+        }`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json'
+            }
+        });
+
+        const result = JSON.parse(response.text());
+        res.json({ score: result.score, feedback: result.feedback });
+
+    } catch (err) {
+        // Hatanın detayını konsola yazdıralım ki sorunu hemen görebilelim
+        console.error("YAPAY ZEKA GERÇEK HATA DETAYI:", err);
+        res.status(500).json({ error: "Yapay zeka analizi sırasında hata oluştu: " + err.message });
+    }
 });
+
 // --- TEST İÇİN KAYDEDİLEN MESAJLARI GÖRME ---
 app.get('/api/test-messages', async (req, res) => {
     try {

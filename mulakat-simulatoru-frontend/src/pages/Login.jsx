@@ -153,7 +153,12 @@ export default function Login() {
 
             {/* Şifre */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-300 ml-1">Şifre</label>
+              <div className="flex items-center justify-between ml-1 mr-1">
+                <label className="text-xs font-medium text-slate-300">Şifre</label>
+                <Link to="/forgot-password" className="text-xs text-cyan-400 hover:underline font-mono">
+                  Şifremi Unuttum?
+                </Link>
+              </div>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
                   <Lock size={18} />
