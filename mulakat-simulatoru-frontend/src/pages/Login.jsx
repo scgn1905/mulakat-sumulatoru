@@ -1,30 +1,45 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Mail, Lock, User, ArrowRight, Sparkles, CheckCircle, ShieldCheck } from 'lucide-react';
+import { loginUser } from '../services/authService';
 
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
     
     if (!email || !password) {
-      alert('Lütfen e-posta ve şifrenizi girin.');
+      setError('Lütfen e-posta ve şifrenizi girin.');
       return;
     }
 
-    const displayName = name.trim() !== '' ? name : email.split('@')[0];
+    try {
+      // Backend'e istek atıyoruz (MySQL veritabanından kontrol ediyor)
+      const data = await loginUser({ email, password });
+      
+      const loggedUser = data.user;
+      
+      // Oturum bilgilerini localStorage'a kaydediyoruz
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('userName', loggedUser.name);
+      localStorage.setItem('user', JSON.stringify(loggedUser));
 
-    // OTURUM BİLGİLERİ (Navbar ile uyumlu olması için 'user' objesi de eklendi)
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('token', 'mock_token_' + Date.now());
-    localStorage.setItem('userName', displayName);
-    localStorage.setItem('user', JSON.stringify({ name: displayName, email: email }));
+      setSuccess('Giriş başarılı! Yönlendiriliyorsunuz...');
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 1000);
 
-    navigate('/', { replace: true });
+    } catch (err) {
+      setError(err.message || 'E-posta veya şifre hatalı.');
+    }
   };
 
   return (
@@ -104,25 +119,20 @@ export default function Login() {
             <p className="text-slate-400 text-xs">Simülatöre erişmek için bilgilerinizi girin.</p>
           </div>
 
+          {/* Hata ve Başarı Mesaj Kutuları */}
+          {error && (
+            <div className="p-3 text-xs text-red-400 bg-red-950/50 border border-red-800 rounded-xl">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="p-3 text-xs text-green-400 bg-green-950/50 border border-green-800 rounded-xl">
+              {success}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
             
-            {/* Kullanıcı Adı */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-300 ml-1">Adınız / Kullanıcı Adınız</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-                  <User size={18} />
-                </span>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Örn: Ahmet Yılmaz"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 transition"
-                />
-              </div>
-            </div>
-
             {/* E-posta */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-300 ml-1">E-posta Adresi</label>

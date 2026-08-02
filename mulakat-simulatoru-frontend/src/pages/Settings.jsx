@@ -19,8 +19,8 @@ export default function Settings() {
   const { colorTheme, setColorTheme } = useTheme();
   
   const [settingsData, setSettingsData] = useState({
-    fullName: 'Seçgin Yıldırım',
-    email: 'secgin.yildirim@example.com',
+    fullName: '',
+    email: '',
     defaultRole: 'software_engineer',
     experienceLevel: 'mid',
     aiInterviewerTone: 'professional',
@@ -31,8 +31,8 @@ export default function Settings() {
   });
 
   const [saved, setSaved] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // 3 ANA RENK PALETİ
   const colorOptions = [
     { id: 'orange', name: 'Ateş Turuncusu', hex: '#f97316' },
     { id: 'blue', name: 'Safir Mavi', hex: '#2563eb' },
@@ -40,36 +40,97 @@ export default function Settings() {
   ];
 
   useEffect(() => {
-    const savedPreferences = localStorage.getItem('userPreferences');
-    if (savedPreferences) {
+    const fetchSettingsAndProfile = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
       try {
-        const parsed = JSON.parse(savedPreferences);
-        setSettingsData(prev => ({ ...prev, ...parsed }));
+        const profileRes = await fetch('http://localhost:5000/api/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setSettingsData(prev => ({
+            ...prev,
+            fullName: profileData.name || prev.fullName,
+            email: profileData.email || prev.email
+          }));
+        }
+
+        const settingsRes = await fetch('http://localhost:5000/api/settings', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (settingsRes.ok) {
+          const data = await settingsRes.json();
+          setSettingsData(prev => ({
+            ...prev,
+            aiInterviewerTone: data.ai_tone || prev.aiInterviewerTone,
+            feedbackDetail: data.report_detail || prev.feedbackDetail,
+            weeklyGoal: String(data.weekly_goal || prev.weeklyGoal),
+            defaultRole: data.target_position || prev.defaultRole,
+            experienceLevel: data.experience_level || prev.experienceLevel,
+            emailNotifications: data.email_notifications ?? prev.emailNotifications,
+            soundEffects: data.sound_effects ?? prev.soundEffects
+          }));
+        }
       } catch (error) {
-        console.error("Ayarlar yüklenirken hata oluştu:", error);
+        console.error("Ayarlar yüklenirken sunucu hatası:", error);
       }
-    }
+    };
+
+    fetchSettingsAndProfile();
   }, []);
 
   const handleChange = (field, value) => {
     setSettingsData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    localStorage.setItem('userPreferences', JSON.stringify(settingsData));
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    currentUser.name = settingsData.fullName;
-    currentUser.email = settingsData.email;
-    localStorage.setItem('user', JSON.stringify(currentUser));
+    setErrorMsg('');
+    const token = localStorage.getItem('token');
 
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    try {
+      if (token) {
+        const response = await fetch('http://localhost:5000/api/settings', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            ai_tone: settingsData.aiInterviewerTone,
+            report_detail: settingsData.feedbackDetail,
+            weekly_goal: parseInt(settingsData.weeklyGoal),
+            target_position: settingsData.defaultRole,
+            experience_level: settingsData.experienceLevel,
+            theme_color: colorTheme,
+            email_notifications: settingsData.emailNotifications,
+            sound_effects: settingsData.soundEffects
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("Ayarlar sunucuya kaydedilemedi.");
+        }
+      }
+
+      localStorage.setItem('userPreferences', JSON.stringify(settingsData));
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      currentUser.name = settingsData.fullName;
+      currentUser.email = settingsData.email;
+      localStorage.setItem('user', JSON.stringify(currentUser));
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      console.error("Kayıt hatası:", error);
+      setErrorMsg("Ayarlar kaydedilirken bir hata oluştu.");
+    }
   };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 text-slate-100 space-y-8">
-      {/* BAŞLIK */}
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-6">
         <div>
           <span className="text-cyan-400 text-xs font-mono font-bold tracking-widest uppercase">
@@ -84,11 +145,15 @@ export default function Settings() {
             <span>{t('settingsSaved', 'Ayarlar başarıyla kaydedildi!')}</span>
           </div>
         )}
+
+        {errorMsg && (
+          <div className="mt-4 md:mt-0 flex items-center gap-2 bg-red-950/60 border border-red-500/40 text-red-300 px-4 py-2 rounded-xl text-sm">
+            <span>{errorMsg}</span>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSave} className="space-y-8">
-
-        {/* 1. PROFİL BİLGİLERİ */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
             <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
@@ -123,7 +188,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 2. VARSAYILAN MÜLAKAT TERCİHLERİ */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
             <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
@@ -167,7 +231,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 3. YAPAY ZEKÂ VE RİSK/TON AYARLARI */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
             <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
@@ -175,7 +238,7 @@ export default function Settings() {
             </div>
             <div>
               <h2 className="text-lg font-bold">{t('aiPersonaSection', 'Yapay Zekâ Mülakatör Karakteri')}</h2>
-              <p className="text-xs text-slate-400">{t('aiPersonaDesc', 'Simülatör içerisindeki AI yöneticisinin tavrını ve raporlama detayını özelleştirin.')}</p>
+              <p className="text-xs text-slate-400">{t('aiPersonaDesc', 'Simülasyon içerisindeki AI yöneticisinin tavrını ve raporlama detayını özelleştirin.')}</p>
             </div>
           </div>
 
@@ -227,7 +290,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 4. GÖRÜNÜM VE TEMA TERCİHLERİ (SADECE VURGU RENK PALETİ) */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
             <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
@@ -272,7 +334,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 5. BİLDİRİMLER VE SESLER */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
             <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
@@ -319,7 +380,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* KAYDET BUTONU */}
         <div className="flex justify-end pt-4">
           <button
             type="submit"
@@ -329,7 +389,6 @@ export default function Settings() {
             <span>{t('saveChanges', 'Değişiklikleri Kaydet')}</span>
           </button>
         </div>
-
       </form>
     </div>
   );

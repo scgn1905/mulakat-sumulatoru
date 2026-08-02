@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, Mail, Lock, User, ArrowRight, Sparkles, CheckCircle, Award } from 'lucide-react';
+import { registerUser } from '../services/authService';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -8,27 +9,35 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
 
     if (!name || !email || !password || !confirmPassword) {
-      alert('Lütfen tüm alanları doldurun.');
+      setError('Lütfen tüm alanları doldurun.');
       return;
     }
 
     if (password !== confirmPassword) {
-      alert('Şifreler eşleşmiyor!');
+      setError('Şifreler eşleşmiyor!');
       return;
     }
 
-    // KAYIT BAŞARILI: Oturum bilgilerini localStorage'a kaydediyoruz
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('token', 'mock_token_' + Date.now());
-    localStorage.setItem('userName', name);
-    localStorage.setItem('user', JSON.stringify({ name: name, email: email }));
-
-    navigate('/', { replace: true });
+    try {
+      // Backend'e istek atıyoruz (MySQL'e kaydediyor)
+      await registerUser({ name, email, password });
+      
+      setSuccess('Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz...');
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 1500);
+    } catch (err) {
+      setError(err.message || 'Kayıt sırasında bir hata oluştu.');
+    }
   };
 
   return (
@@ -107,6 +116,18 @@ export default function Register() {
             <p className="text-slate-400 text-xs">Mülakat simülasyonuna başlamak için kayıt olun.</p>
           </div>
 
+          {/* Hata ve Başarı Mesaj Kutuları */}
+          {error && (
+            <div className="p-3 text-xs text-red-400 bg-red-950/50 border border-red-800 rounded-xl">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="p-3 text-xs text-green-400 bg-green-950/50 border border-green-800 rounded-xl">
+              {success}
+            </div>
+          )}
+
           <form onSubmit={handleRegister} className="space-y-3.5">
             
             {/* Ad Soyad */}
@@ -121,7 +142,7 @@ export default function Register() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Seçgin Yıldırım"
+                  placeholder="Ahmet Yılmaz"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 transition"
                 />
               </div>
