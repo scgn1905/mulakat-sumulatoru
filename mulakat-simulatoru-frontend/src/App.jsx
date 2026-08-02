@@ -19,6 +19,7 @@ import Leaderboard from './pages/Leaderboard'; // <-- LİDERLİK TABLOSU SAYFASI
 import Payment from './pages/Payment'; // <-- YENİ EKLENDİ: ÖDEME SAYfASI
 import ForgotPassword from './pages/ForgotPassword'; // <-- YENİ EKLENDİ: ŞİFREMİ UNUTTUM SAYFASI
 import ResetPassword from './pages/ResetPassword';   // <-- YENİ EKLENDİ: YENİ ŞİFRE BELİRLEME SAYFASI
+import Admin from './pages/Admin'; // <-- YENİ EKLENDİ: YÖNETİCİ PANELİ
 
 // Korumalı Rota Bileşeni
 const ProtectedRoute = ({ children }) => {
@@ -62,6 +63,16 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Payment />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Yönetici Paneli Rotası */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <Admin />
               </ProtectedRoute>
             } 
           />

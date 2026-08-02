@@ -10,7 +10,7 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'mulakat_gizli_anahtar_2026';
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: "AQ.Ab8RN6JyrhmRDClWcZFvqLnKLp_INDpXa04diGI7C1KLgMxwnQ" });
 app.use(cors());
 app.use(express.json());
 
@@ -176,6 +176,7 @@ const initDatabase = async () => {
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL UNIQUE,
                 password VARCHAR(255) NOT NULL,
+                role VARCHAR(50) DEFAULT 'user',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -318,8 +319,8 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: "E-posta veya şifre hatalı." });
         }
         const user = users[0];
-        const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
-        res.json({ message: "Giriş başarılı!", token, user: { id: user.id, name: user.name, email: user.email } });
+        const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ message: "Giriş başarılı!", token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
     } catch (err) {
         console.error("Giriş hatası:", err);
         res.status(500).json({ error: "Sunucu hatası oluştu." });
@@ -374,6 +375,34 @@ app.get('/api/settings', verifyToken, async (req, res) => {
     }
 });
 
+// --- ADMIN: İLETİŞİM MESAJLARINI LİSTELEME ENDPOINT'İ ---
+app.get('/api/admin/messages', verifyToken, async (req, res) => {
+    try {
+        if (req.user.email !== 'secginn@gmail.com') {
+            return res.status(403).json({ error: "Bu alana sadece süper yönetici erişebilir." });
+        }
+        const [messages] = await db.query("SELECT * FROM contact_messages ORDER BY created_at DESC");
+        res.json(messages);
+    } catch (err) {
+        console.error("Mesajları getirme hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
+// --- ADMIN: KULLANICILARI LİSTELEME ENDPOINT'İ ---
+app.get('/api/admin/users', verifyToken, async (req, res) => {
+    try {
+        if (req.user.email !== 'secginn@gmail.com') {
+            return res.status(403).json({ error: "Bu alana sadece süper yönetici erişebilir." });
+        }
+        const [users] = await db.query("SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC");
+        res.json(users);
+    } catch (err) {
+        console.error("Kullanıcıları getirme hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
 app.get('/api/questions/:categoryId', async (req, res) => {
     const { categoryId } = req.params;
     try {
@@ -386,6 +415,9 @@ app.get('/api/questions/:categoryId', async (req, res) => {
 });
 
 app.post('/api/questions', verifyToken, async (req, res) => {
+    if (req.user.email !== 'secginn@gmail.com') {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     const { category_id, question_text } = req.body;
     try {
         await db.query("INSERT INTO interview_questions (category_id, question_text) VALUES (?, ?)", [category_id, question_text]);
@@ -396,6 +428,9 @@ app.post('/api/questions', verifyToken, async (req, res) => {
 });
 
 app.delete('/api/questions/:id', verifyToken, async (req, res) => {
+    if (req.user.email !== 'secginn@gmail.com') {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     try {
         await db.query("DELETE FROM interview_questions WHERE id = ?", [req.params.id]);
         res.json({ message: "Soru silindi." });
@@ -445,45 +480,36 @@ app.post('/api/evaluate', verifyToken, async (req, res) => {
     }
 
     try {
-        const prompt = `Sen kıdemli bir teknik mülakat uzmanısın. 
-        Mülakat Sorusu: "${question}"
-        Adayın Verdiği Yanıt: "${answer}"
+        const apiKey = "AQ.Ab8RN6JyrhmRDClWcZFvqLnKLp_INDpXa04diGI7C1KLgMxwnQ";
         
-        KURALLAR:
-        1. Eğer aday saçma sapan, alakasız, çok kısa veya sadece tek bir karakter/nokta yazdıysa, puanı KESİNLİKLE 0 ile 20 arasında ver ve geri bildirimde cevabın geçersiz olduğunu sertçe belirt.
-        2. Yanıtı teknik doğruluk ve STAR metoduna göre ciddi şekilde değerlendir.
-        
-        Yanıtını KESİNLİKLE şu JSON formatında döndür, başka hiçbir metin ekleme:
-        {
-          "score": [0 ile 100 arasında tam sayı],
-          "feedback": "[Detaylı geri bildirim metni]"
-        }`;
+        const prompt = "Sen kıdemli bir teknik mülakat uzmanısın. Mülakat Sorusu: \"" + question + "\". Adayın Verdiği Yanıt: \"" + answer + "\". KURALLAR: 1. Aday saçma sapan, alakasız, çok kısa veya tek bir nokta/karakter yazdıysa puanı KESİNLİKLE 0 ile 20 arasında ver. 2. Yanıtı teknik açıdan ve STAR metoduna göre ciddi şekilde değerlendir. Yanıtını KESİNLİKLE şu JSON formatında döndür, başka hiçbir metin ekleme: {\"score\": 15, \"feedback\": \"Geri bildirim metni\"}";
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json'
-            }
+        // En güncel ve aktif model adı kullanıldı
+        const fetchUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-3.6-flash:generateContent?key=" + apiKey;
+
+        const geminiResponse = await fetch(fetchUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
         });
 
-        const result = JSON.parse(response.text());
+        const data = await geminiResponse.json();
+
+        if (data.error) {
+            throw new Error(data.error.message);
+        }
+
+        let rawText = data.candidates[0].content.parts[0].text;
+        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        const result = JSON.parse(rawText);
         res.json({ score: result.score, feedback: result.feedback });
 
     } catch (err) {
-        // Hatanın detayını konsola yazdıralım ki sorunu hemen görebilelim
-        console.error("YAPAY ZEKA GERÇEK HATA DETAYI:", err);
-        res.status(500).json({ error: "Yapay zeka analizi sırasında hata oluştu: " + err.message });
-    }
-});
-
-// --- TEST İÇİN KAYDEDİLEN MESAJLARI GÖRME ---
-app.get('/api/test-messages', async (req, res) => {
-    try {
-        const [rows] = await db.query("SELECT * FROM contact_messages");
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("YAPAY ZEKA HATASI:", err);
+        res.status(500).json({ error: "Yapay zeka analizi sırasında hata: " + err.message });
     }
 });
 

@@ -376,6 +376,7 @@ export default function Interview() {
   };
 
   // --- BACKEND /API/EVALUATE İLE YAPAY ZEKA DEĞERLENDİRMESİ ---
+  // --- BACKEND /API/EVALUATE İLE YAPAY ZEKA DEĞERLENDİRMESİ ---
   const handleSubmitAnswer = async (e) => {
     e.preventDefault();
     if (!userAnswer.trim()) return;
@@ -384,6 +385,7 @@ export default function Interview() {
     setIsEvaluating(true);
 
     const token = localStorage.getItem('token');
+    const currentQ = questions[currentQuestionIndex];
 
     try {
       const response = await fetch('http://localhost:5000/api/evaluate', {
@@ -392,37 +394,28 @@ export default function Interview() {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ answer: userAnswer })
+        // KRİTİK DÜZELTME: Artık hem soruyu hem de cevabı backend'e gönderiyoruz
+        body: JSON.stringify({ question: currentQ, answer: userAnswer })
       });
 
-      let evalData = { score: 88, feedback: "Yapay zeka analizi başarıyla tamamlandı." };
-      if (response.ok) {
-        evalData = await response.json();
+      if (!response.ok) {
+        const errJson = await response.json();
+        throw new Error(errJson.error || "Yapay zeka değerlendirme hatası");
       }
 
-      let baseScore = evalData.score || 85; 
+      const evalData = await response.json();
+      let baseScore = evalData.score; 
+
       if (difficultyMode === 'Stres Testi') {
-        baseScore = Math.max(40, baseScore - 10); 
+        baseScore = Math.max(10, baseScore - 15); 
       }
 
-      const currentQ = questions[currentQuestionIndex];
-      
       const analysisResult = {
         question: currentQ,
         answer: userAnswer,
         score: baseScore,
-        analysis: evalData.feedback || (difficultyMode === 'Stres Testi' 
-          ? (baseScore > 85 
-              ? "Stres Testi modunda olmanıza rağmen argümanlarınız sert baskı altında bile tutarlı kaldı." 
-              : "Stres testi senaryosunda baskı altında kaldınız; ifadelerinizde bazı belirsizlikler ve savunmasız noktalar var.")
-          : (baseScore > 90 
-              ? "Yanıtınız konu hakimiyetini net bir şekilde yansıtıyor. Argümanlarınız tutarlı ve profesyonel bir dille desteklenmiş." 
-              : "Temel yaklaşım doğru ancak konunun derinliğine inmeli ve pratik örneklerle zenginleştirmelisiniz.")),
-        
-        missingPoints: baseScore > 85 
-          ? "Kritik bir eksik tespit edilmedi; ancak rakamsal verilerle desteklenebilirdi." 
-          : "Kurumsal risk faktörleri ve detaylı metrikler eksik bırakılmış.",
-        
+        analysis: evalData.feedback,
+        missingPoints: baseScore > 70 ? "Kritik bir eksik tespit edilmedi." : "Yanıtınız yüzeysel kaldı, teknik detaylar eksik.",
         suggestion: difficultyMode === 'Stres Testi'
           ? "Stres testlerinde eleştirilere karşı savunma yapmak yerine çözüm odaklı metrikler sunun."
           : "İlerleyen mülakatlarda konuyu somut senaryolarla bağdaştırmaya özen gösterin."
@@ -430,20 +423,10 @@ export default function Interview() {
 
       setFeedback(analysisResult);
       setAllResponses(prev => [...prev, analysisResult]);
+
     } catch (err) {
       console.error("Değerlendirme isteği başarısız:", err);
-      const baseScore = 85;
-      const currentQ = questions[currentQuestionIndex];
-      const analysisResult = {
-        question: currentQ,
-        answer: userAnswer,
-        score: baseScore,
-        analysis: "Yapay zeka analiz servisine bağlanıldı, yanıtınız başarıyla işlendi.",
-        missingPoints: "Detaylı metrikler eklenebilir.",
-        suggestion: "Pratik yapmaya devam edin."
-      };
-      setFeedback(analysisResult);
-      setAllResponses(prev => [...prev, analysisResult]);
+      alert("Yapay zeka analizi alınırken bir hata oluştu: " + err.message);
     } finally {
       setIsEvaluating(false);
     }
@@ -968,15 +951,17 @@ export default function Interview() {
                     </div>
                   </div>
 
-                  <div className="bg-[#131b2e] p-5 rounded-2xl border border-[#222f4c] space-y-2">
-                    <div className="flex items-center gap-2 text-[#f97316] text-xs font-bold">
-                      <Sparkles size={16} />
-                      <span>AI Ses Koçu Genel Tavsiyesi</span>
-                    </div>
-                    <p className="text-xs text-slate-300 italic font-medium leading-relaxed">
-                      "Sesli anlatımlarda vurgularınız oldukça net. Gelecek oturumlarda heyecan anındaki duraksamaları minimuma indirerek profesyonel diksiyonunuzu daha da öne çıkarabilirsiniz."
-                    </p>
-                  </div>
+                  {isListening && (
+  <div className="bg-[#131b2e] p-5 rounded-2xl border border-[#222f4c] space-y-2">
+    <div className="flex items-center gap-2 text-[#f97316] text-xs font-bold">
+      <Sparkles size={16} />
+      <span>AI Ses Koçu Genel Tavsiyesi</span>
+    </div>
+    <p className="text-xs text-slate-300 italic font-medium leading-relaxed">
+      "Sesli anlatımlarda vurgularınız oldukça net. Gelecek oturumlarda heyecan anındaki duraksamaları minimuma indirerek profesyonel diksiyonunuzu daha da öne çıkarabilirsiniz."
+    </p>
+  </div>
+)}
 
                 </div>
 
