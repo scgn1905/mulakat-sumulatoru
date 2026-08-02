@@ -68,11 +68,11 @@ app.put('/api/settings', verifyToken, async (req, res) => {
     }
 });
 
-// --- EKSİK OLAN ŞİFRE DEĞİŞTİRME ENDPOINT'İ BURAYA EKLENDİ ---
+// --- ŞİFRE DEĞİŞTİRME ENDPOINT'İ (HATASIZ HALİ) ---
 app.put('/api/change-password', verifyToken, async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newProvider && !newPassword) {
+    if (!currentPassword || !newPassword) {
         return res.status(400).json({ message: "Lütfen mevcut ve yeni şifrenizi girin." });
     }
 
@@ -96,6 +96,7 @@ app.put('/api/change-password', verifyToken, async (req, res) => {
         res.status(500).json({ message: "Sunucu hatası oluştu." });
     }
 });
+
 const initDatabase = async () => {
     try {
         await db.query(`
@@ -104,6 +105,16 @@ const initDatabase = async () => {
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL UNIQUE,
                 password VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        // YENİ EKLENECEK TABLO BURASI:
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS contact_messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -220,6 +231,29 @@ app.get('/api/profile', verifyToken, async (req, res) => {
     }
 });
 
+// --- YENİ EKLENEN: KULLANICI PROFİL (AD VE E-POSTA) GÜNCELLEME ENDPOINT'İ ---
+app.put('/api/profile', verifyToken, async (req, res) => {
+    const { name, email } = req.body;
+    
+    if (!name || !email) {
+        return res.status(400).json({ error: "Ad ve e-posta alanları boş bırakılamaz." });
+    }
+
+    try {
+        const [existing] = await db.query("SELECT * FROM users WHERE email = ? AND id != ?", [email, req.user.id]);
+        if (existing.length > 0) {
+            return res.status(400).json({ error: "Bu e-posta adresi başka bir hesap tarafından kullanılıyor." });
+        }
+
+        await db.query("UPDATE users SET name = ?, email = ? WHERE id = ?", [name, email, req.user.id]);
+
+        res.json({ message: "Profil bilgileri başarıyla güncellendi." });
+    } catch (err) {
+        console.error("Profil güncelleme hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
 app.get('/api/settings', verifyToken, async (req, res) => {
     try {
         const [settings] = await db.query("SELECT * FROM user_settings WHERE user_id = ?", [req.user.id]);
@@ -283,11 +317,34 @@ app.get('/api/interview-results/:email', async (req, res) => {
     }
 });
 
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT user_email, category_title, score, created_at 
+            FROM interview_results 
+            ORDER BY score DESC, created_at DESC
+        `);
+        res.json(rows);
+    } catch (err) {
+        console.error("Liderlik tablosu hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
 app.post('/api/evaluate', verifyToken, async (req, res) => {
     const { answer } = req.body;
     const wordCount = answer ? answer.trim().split(/\s+/).length : 5;
     let score = Math.min(100, Math.max(40, wordCount * 4));
     res.json({ score, feedback: "Yapay zeka analizi başarıyla tamamlandı." });
+});
+// --- TEST İÇİN KAYDEDİLEN MESAJLARI GÖRME ---
+app.get('/api/test-messages', async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT * FROM contact_messages");
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.listen(5000, '0.0.0.0', (err) => {

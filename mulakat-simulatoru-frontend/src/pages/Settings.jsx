@@ -52,7 +52,7 @@ export default function Settings() {
       if (!token) return;
 
       try {
-        const profileRes = await fetch('http://localhost:5000/api/profile', {
+        const profileRes = await fetch('/api/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (profileRes.ok) {
@@ -64,7 +64,7 @@ export default function Settings() {
           }));
         }
 
-        const settingsRes = await fetch('http://localhost:5000/api/settings', {
+        const settingsRes = await fetch('/api/settings', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (settingsRes.ok) {
@@ -91,15 +91,15 @@ export default function Settings() {
   const handleChange = (field, value) => {
     setSettingsData(prev => ({ ...prev, [field]: value }));
   };
-
-  const handleSave = async (e) => {
+const handleSave = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     const token = localStorage.getItem('token');
 
     try {
       if (token) {
-        const response = await fetch('http://localhost:5000/api/settings', {
+        // 1. Ayarları Güncelleme
+        const response = await fetch('/api/settings', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -120,6 +120,31 @@ export default function Settings() {
         if (!response.ok) {
           throw new Error("Ayarlar sunucuya kaydedilemedi.");
         }
+
+        // 2. Profil Adı ve E-postasını Güncelleme
+        const profileRes = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: settingsData.fullName,
+            email: settingsData.email
+          })
+        });
+
+        const profileText = await profileRes.text();
+        let profileData;
+        try {
+          profileData = JSON.parse(profileText);
+        } catch (err) {
+          throw new Error("Sunucu geçersiz yanıt döndürdü (Backend rotası eksik olabilir).");
+        }
+
+        if (!profileRes.ok) {
+          throw new Error(profileData.error || "Profil bilgileri güncellenemedi.");
+        }
       }
 
       localStorage.setItem('userPreferences', JSON.stringify(settingsData));
@@ -132,7 +157,7 @@ export default function Settings() {
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
       console.error("Kayıt hatası:", error);
-      setErrorMsg("Ayarlar kaydedilirken bir hata oluştu.");
+      setErrorMsg(error.message || "Ayarlar kaydedilirken bir hata oluştu.");
     }
   };
 
@@ -157,7 +182,7 @@ export default function Settings() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/change-password', {
+      const response = await fetch('/api/change-password', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
