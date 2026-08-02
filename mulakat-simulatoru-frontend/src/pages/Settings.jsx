@@ -11,7 +11,8 @@ import {
   Sparkles,
   Volume2,
   Palette,
-  Check
+  Check,
+  Lock
 } from 'lucide-react';
 
 export default function Settings() {
@@ -29,6 +30,12 @@ export default function Settings() {
     emailNotifications: true,
     soundEffects: true
   });
+
+  // --- ŞİFRE DEĞİŞTİRME STATE'LERİ ---
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState({ text: '', type: '' });
 
   const [saved, setSaved] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -126,6 +133,52 @@ export default function Settings() {
     } catch (error) {
       console.error("Kayıt hatası:", error);
       setErrorMsg("Ayarlar kaydedilirken bir hata oluştu.");
+    }
+  };
+
+  // --- ASYNC EKLENEREK DÜZELTİLEN ŞİFRE DEĞİŞTİRME İŞLEMİ ---
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordMessage({ text: '', type: '' });
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordMessage({ text: 'Lütfen tüm şifre alanlarını doldurun.', type: 'error' });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage({ text: 'Yeni şifreler birbiriyle uyuşmuyor.', type: 'error' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordMessage({ text: 'Yeni şifre en az 6 karakter olmalıdır.', type: 'error' });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/change-password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPasswordMessage({ text: data.message || 'Şifreniz başarıyla güncellendi!', type: 'success' });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setPasswordMessage({ text: data.message || 'Mevcut şifre hatalı.', type: 'error' });
+      }
+    } catch (err) {
+      console.error("Şifre değiştirme hatası:", err);
+      setPasswordMessage({ text: 'Şifre güncellenirken bir hata oluştu.', type: 'error' });
     }
   };
 
@@ -380,6 +433,74 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* --- ŞİFRE DEĞİŞTİRME BÖLÜMÜ (FORMUN İÇİNDE) --- */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
+            <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
+              <Lock size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">Şifre Değiştir</h2>
+              <p className="text-xs text-slate-400">Hesap güvenliğinizi korumak için şifrenizi güncelleyin.</p>
+            </div>
+          </div>
+
+          {passwordMessage.text && (
+            <div className={`p-4 rounded-xl text-xs font-bold ${passwordMessage.type === 'error' ? 'bg-red-950/60 border border-red-500/40 text-red-300' : 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300'}`}>
+              {passwordMessage.text}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-mono text-slate-400 mb-2">Mevcut Şifre</label>
+              <input 
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-mono text-slate-400 mb-2">Yeni Şifre</label>
+                <input 
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-400 mb-2">Yeni Şifre (Tekrar)</label>
+                <input 
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={handlePasswordChange}
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-bold px-6 py-3 rounded-xl transition cursor-pointer text-xs"
+              >
+                <Lock size={15} />
+                <span>Şifreyi Güncelle</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* --- DEĞİŞİKLİKLERİ KAYDET BUTONU EN ALTTA --- */}
         <div className="flex justify-end pt-4">
           <button
             type="submit"

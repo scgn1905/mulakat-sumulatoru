@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const topicAnalytics = [
   { topic: 'Kriz Yönetimi & Soğukkanlılık', score: 85 },
@@ -21,22 +21,23 @@ const dailyQuestion = {
   }
 };
 
-const badgesList = [
-  { id: 1, title: 'İlk Adım', desc: 'İlk mülakat simülasyonunu tamamla', icon: '🚀', unlocked: true },
-  { id: 2, title: 'Seri Katili', desc: '5 gün üst üste günlük soru çöz', icon: '🔥', unlocked: true },
-  { id: 3, title: 'Analitik Beyin', desc: 'Finans veya Veri kategorisinde 90+ puan al', icon: '🧠', unlocked: true },
-  { id: 4, title: 'Kriz Yönetmeni', desc: '10 farklı senaryo sorusunu başarıyla geç', icon: '⚡', unlocked: false },
-  { id: 5, title: 'Mükemmeliyetçi', desc: 'Genel ortalamayı 9.0 üzerine çıkar', icon: '👑', unlocked: false }
+const getBadgesList = (totalInterviews, totalQuestionsSolved, overallAvg, streakCount) => [
+  { id: 1, title: 'İlk Adım', desc: 'İlk mülakat simülasyonunu tamamla', icon: '🚀', unlocked: totalInterviews >= 1 },
+  { id: 2, title: 'Seri Katili', desc: '5 gün üst üste günlük soru çöz', icon: '🔥', unlocked: streakCount >= 5 },
+  { id: 3, title: 'Analitik Beyin', desc: 'Mülakat ortalaman 8.0 ve üzeri olsun', icon: '🧠', unlocked: parseFloat(overallAvg) >= 8.0 && totalInterviews > 0 },
+  { id: 4, title: 'Kriz Yönetmeni', desc: 'Toplamda en az 10 soru çöz', icon: '⚡', unlocked: totalQuestionsSolved >= 10 },
+  { id: 5, title: 'Mükemmeliyetçi', desc: 'Genel ortalamayı 9.0 üzerine çıkar', icon: '👑', unlocked: parseFloat(overallAvg) >= 9.0 && totalQuestionsSolved > 0 }
 ];
 
 export default function Profile() {
-  const [streakCount, setStreakCount] = useState(5);
+  const [streakCount, setStreakCount] = useState(0);
   const [dailyAnswer, setDailyAnswer] = useState('');
   const [isDailySolved, setIsDailySolved] = useState(false);
   const [isDailyEvaluating, setIsDailyEvaluating] = useState(false);
 
-  // --- MÜLAKAT İSTATİSTİKLERİ İÇİN STATE'LER ---
   const [stats, setStats] = useState({ interviews: 0, totalQuestions: 0, totalScoreSum: 0 });
+  const [interviewHistory, setInterviewHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -50,29 +51,78 @@ export default function Profile() {
 
   useEffect(() => {
     try {
-      // Interview.jsx'in kaydettiği interviewStats verisini okuyoruz
-      const savedStats = JSON.parse(localStorage.getItem('interviewStats'));
-      if (savedStats) {
-        setStats(savedStats);
+      // Giriş yapan aktif kullanıcıyı okuyup profile yansıtıyoruz
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (currentUser.name || currentUser.email) {
+        setProfileData(prev => ({
+          ...prev,
+          name: currentUser.name || prev.name,
+          email: currentUser.email || prev.email
+        }));
       }
 
-      const solved = localStorage.getItem('daily_solved');
-      if (solved === 'true') {
-        setIsDailySolved(true);
+      // Her kullanıcının kendi e-postasına özel istatistiklerini yüklüyoruz (yeni hesapsa 0 başlar)
+      if (currentUser.email) {
+        const userStatsKey = `interviewStats_${currentUser.email}`;
+        const savedStats = JSON.parse(localStorage.getItem(userStatsKey));
+        if (savedStats) {
+          setStats(savedStats);
+        } else {
+          setStats({ interviews: 0, totalQuestions: 0, totalScoreSum: 0 });
+        }
+
+        // Kullanıcıya özel seri (streak) verisini yüklüyoruz
+        const userStreakKey = `streakCount_${currentUser.email}`;
+        const savedStreak = localStorage.getItem(userStreakKey);
+        if (savedStreak !== null) {
+          setStreakCount(parseInt(savedStreak, 10));
+        } else {
+          setStreakCount(1); // Yeni hesap için başlangıç serisi
+        }
+
+        const userDailySolvedKey = `daily_solved_${currentUser.email}`;
+        const solved = localStorage.getItem(userDailySolvedKey);
+        if (solved === 'true') {
+          setIsDailySolved(true);
+        }
       }
     } catch (err) {
       console.error("Veriler yüklenirken hata:", err);
     }
   }, []);
 
-  // --- DİNAMİK HESAPLAMALAR ---
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!currentUser.email) {
+        setLoadingHistory(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/interview-results/${currentUser.email}`);
+        if (response.ok) {
+          const data = await response.json();
+          setInterviewHistory(data);
+        }
+      } catch (err) {
+        console.error("Geçmiş mülakatlar yüklenemedi:", err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
   const totalInterviews = stats.interviews;
   const totalQuestionsSolved = stats.totalQuestions;
   
-  // Yüzlük puanı 10 üzerinden ortalamaya çeviriyoruz (Örn: %92 -> 9.2 / 10)
   const overallAvg = stats.totalQuestions > 0
     ? (stats.totalScoreSum / stats.totalQuestions / 10).toFixed(1)
     : '0.0';
+
+  const currentBadges = getBadgesList(totalInterviews, totalQuestionsSolved, overallAvg, streakCount);
 
   const handleSolveDaily = () => {
     if (!dailyAnswer.trim()) return;
@@ -80,8 +130,15 @@ export default function Profile() {
     setTimeout(() => {
       setIsDailyEvaluating(false);
       setIsDailySolved(true);
-      setStreakCount((prev) => prev + 1);
-      localStorage.setItem('daily_solved', 'true');
+      
+      const newStreak = streakCount + 1;
+      setStreakCount(newStreak);
+
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (currentUser.email) {
+        localStorage.setItem(`streakCount_${currentUser.email}`, newStreak.toString());
+        localStorage.setItem(`daily_solved_${currentUser.email}`, 'true');
+      }
     }, 1200);
   };
 
@@ -193,6 +250,38 @@ export default function Profile() {
         </div>
       )}
 
+      {/* GEÇMİŞ MÜLAKAT SONUÇLARIM */}
+      <div className="bg-[#0b101d] border border-[#1e293b] p-8 rounded-3xl shadow-2xl space-y-4">
+        <div className="flex justify-between items-center border-b border-[#1b2436] pb-4">
+          <div>
+            <h3 className="text-xl font-black text-white tracking-tight">Geçmiş Mülakat Sonuçlarım</h3>
+            <p className="text-xs text-slate-400 font-semibold">Veritabanına kaydedilen simülasyon geçmişiniz ve puanlarınız.</p>
+          </div>
+        </div>
+
+        {loadingHistory ? (
+          <p className="text-xs text-slate-400 py-4">Geçmiş yükleniyor...</p>
+        ) : interviewHistory.length === 0 ? (
+          <p className="text-xs text-slate-400 py-4">Henüz tamamlanmış bir mülakat simülasyonunuz bulunmuyor.</p>
+        ) : (
+          <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
+            {interviewHistory.map((item) => (
+              <div key={item.id} className="bg-[#050811] border border-[#1b2436] p-4 rounded-2xl flex items-center justify-between text-xs">
+                <div>
+                  <strong className="text-white block text-sm font-bold">{item.category_title}</strong>
+                  <span className="text-slate-400 text-[10px]">
+                    {new Date(item.created_at).toLocaleDateString('tr-TR')} • {new Date(item.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1.5 rounded-xl font-black text-sm">
+                  %{item.score}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 3. KARİYER ROZETLERİ & BAŞARILAR */}
       <div className="bg-[#0b101d] p-8 rounded-3xl border border-[#1e293b] shadow-2xl space-y-6">
         <div className="flex justify-between items-center border-b border-[#1b2436] pb-4">
@@ -201,12 +290,12 @@ export default function Profile() {
             <p className="text-xs text-slate-400 font-semibold">Simülasyon sürecinde açtığın rozetler ve kilometre taşların.</p>
           </div>
           <span className="bg-amber-500/10 text-amber-400 text-xs font-bold px-3 py-1.5 rounded-xl border border-amber-500/30">
-            🏆 {badgesList.filter(b => b.unlocked).length} / {badgesList.length} Açıldı
+            🏆 {currentBadges.filter(b => b.unlocked).length} / {currentBadges.length} Açıldı
           </span>
         </div>
 
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {badgesList.map((badge) => (
+          {currentBadges.map((badge) => (
             <div
               key={badge.id}
               className={`p-4 rounded-2xl border flex flex-col items-center text-center space-y-2 transition-all ${

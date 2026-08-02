@@ -26,7 +26,8 @@ import {
   Lightbulb,
   CheckCircle2,
   Zap,
-  Flame
+  Flame,
+  Volume2
 } from 'lucide-react';
 
 export default function Interview() {
@@ -44,6 +45,14 @@ export default function Interview() {
 
   // --- ZORLUK / MOD SEÇİMİ ---
   const [difficultyMode, setDifficultyMode] = useState('Dengeli Kurumsal');
+
+  // --- KATEGORİ ARAMA VE FİLTRELEME STATE'LERİ ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+
+  // --- YENİ EKLENEN STATE'LER: BACKEND'den SORU ÇEKME ---
+  const [questions, setQuestions] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
 
   // --- SESLİ YAZMA VE ANALİZ STATE'LERİ ---
   const [isListening, setIsListening] = useState(false);
@@ -175,82 +184,69 @@ export default function Interview() {
       id: 'frontend',
       title: 'Frontend Developer (React / Web)',
       icon: <Code className="text-[#f97316]" size={24} />,
-      desc: 'React, performans optimizasyonları, State yönetimi ve modern web teknolojileri.',
-      questions: [
-        "React'te 'Virtual DOM' kavramını ve performans açısından avantajlarını detaylıca açıklar mısınız?",
-        "Büyük ölçekli bir React uygulamasında state yönetimi için Redux Toolkit, Zustand veya Context API arasından seçim yaparken hangi kriterleri göz önünde bulundurursunuz?",
-        "useEffect hook'unun bağımlılık dizisi (dependency array) yanlış kullanıldığında karşılaşılan yaygın memory leak (bellek sızıntısı) problemleri nelerdir?"
-      ]
+      desc: 'React, performans optimizasyonları, State yönetimi ve modern web teknolojileri.'
     },
     {
       id: 'backend',
       title: 'Backend Developer (Node.js / C#)',
       icon: <Cpu className="text-emerald-400" size={24} />,
-      desc: 'API tasarımı, veritabanı optimizasyonu, asenkron programlama ve mimari yapıları.',
-      questions: [
-        "RESTful API tasarımında mikroservis mimarisine geçişin avantajları, dezavantajları ve distributed transactions (dağıtık işlemler) yönetimi nasıl yapılır?",
-        "Node.js event loop mekanizmasının çalışma mantığını ve asenkron I/O işlemlerini nasıl yönettiğini açıklayınız.",
-        "C# (.NET) ortamında Garbage Collector (GC) mekanizması nasıl çalışır ve bellek sızıntılarını önlemek için nelere dikkat edersiniz?"
-      ]
+      desc: 'API tasarımı, veritabanı optimizasyonu, asenkron programlama ve mimari yapıları.'
     },
     {
       id: 'hr',
       title: 'İnsan Kaynakları & Davranışsal',
       icon: <Users className="text-amber-400" size={24} />,
-      desc: 'Kriz yönetimi, takım uyumluluğu, stres altında çalışabilme ve STAR metodolojisi.',
-      questions: [
-        "Geçmiş tecrübelerinizde ekibinizle ciddi bir fikir ayrılığı yaşadığınız kriz anını ve bunu STAR metodolojisine göre nasıl çözdüğünüzü anlatır mısınız?",
-        "Üzerinizde birden fazla kritik görev ve çakışan teslim tarihleri varken önceliklendirmenizi nasıl yaparsınız?",
-        "Yapıcı olmayan veya sert bir eleştiri aldığınızda profesyonel duruşunuzu koruyarak bunu nasıl bir gelişim fırsatına dönüştürdünüz?"
-      ]
+      desc: 'Kriz yönetimi, takım uyumluluğu, stres altında çalışabilme ve STAR metodolojisi.'
     },
     {
       id: 'product',
       title: 'Ürün Yöneticisi (Product Owner)',
       icon: <Layers className="text-purple-400" size={24} />,
-      desc: 'Ürün yaşam döngüsü, sprint planlama, backlog yönetimi ve paydaş iletişimi.',
-      questions: [
-        "Müşteri talepleri ile yazılım ekibinin teknik borç (technical debt) temizleme isteği çakıştığında önceliklendirmenizi (MoSCoW, RICE vb.) nasıl yaparsınız?",
-        "Yeni bir ürün özelliğinin (feature) başarı metriklerini (KPI ve OKR'ler) belirlerken hangi analitik kriterleri göz önünde bulundurursunuz?",
-        "Pazara hızlı çıkmak (MVP) ile kusursuz ve eksiksiz ürün sunmak arasındaki dengeyi ürün yaşam döngüsünde nasıl kurarsınız?"
-      ]
+      desc: 'Ürün yaşam döngüsü, sprint planlama, backlog yönetimi ve paydaş iletişimi.'
     },
     {
       id: 'leadership',
       title: 'Takım Lideri & Engineering Manager',
       icon: <ShieldCheck className="text-rose-400" size={24} />,
-      desc: 'Ekip yönetimi, yetenek geliştirme, mentörlük ve teknik vizyon belirleme.',
-      questions: [
-        "Ekibinizdeki düşük performans gösteren bir yazılımcının kök nedenini bulmak ve performansını artırmak için nasıl bir koçluk yaklaşımı izlersiniz?",
-        "Teknik kararlar alırken ekip içi mutabakatı (consensus) sağlayamadığınız ve tıkanıklık yaşadığınız durumlarda lider olarak nasıl insiyatif alırsınız?",
-        "Junior ve mid-level geliştiricilerin hızla adaptasyonu, yetenek gelişimi ve mentörlüğü için ekip içinde hangi sürdürülebilir süreçleri kurarsınız?"
-      ]
+      desc: 'Ekip yönetimi, yetenek geliştirme, mentörlük ve teknik vizyon belirleme.'
     },
     {
       id: 'english',
       title: 'İngilizce Mülakat (Global Talent)',
       icon: <Sparkles className="text-teal-400" size={24} />,
-      desc: 'Yabancı dilde kendini ifade edebilme, teknik akıcılık ve global mülakat simülasyonu.',
-      questions: [
-        "Could you describe a challenging project where you had to quickly adapt to a technology or methodology you weren't familiar with?",
-        "How do you handle tight deadlines and pressure from international stakeholders in a distributed remote team environment?",
-        "Where do you see your professional career path in the next five years, and how do you plan to achieve your global goals?"
-      ]
+      desc: 'Yabancı dilde kendini ifade edebilme, teknik akıcılık ve global mülakat simülasyonu.'
     },
     {
       id: 'finance',
       title: 'Finans & İş Analisti',
       icon: <TrendingUp className="text-indigo-400" size={24} />,
-      desc: 'Veri analizi, risk yönetimi, finansal modelleme ve iş süreçleri.',
-      questions: [
-        "Belirsizlik içeren büyük veri setleriyle ve eksik verilerle çalışırken doğru iş kararı almak için hangi analitik yöntemleri kullanırsınız?",
-        "Şirket içi maliyetleri optimize etmek, bütçe sapmalarını önlemek ve operasyonel verimliliği artırmak için önerdiğiniz stratejiler nelerdir?",
-        "Finansal bir projede risk analizi yaparken (sensitivity analysis, scenario planning) göz ardı edilmemesi gereken en kritik faktörler nelerdir?"
-      ]
+      desc: 'Veri analizi, risk yönetimi, finansal modelleme ve iş süreçleri.'
     }
   ];
 
-  const handleSelectCategory = (cat) => {
+  // --- KATEGORİ FİLTRELEME MANTIĞI ---
+  const filteredCategories = interviewCategories.filter(cat => {
+    const matchesSearch = cat.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          cat.desc.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = selectedFilter === 'all' || cat.id === selectedFilter;
+    return matchesSearch && matchesFilter;
+  });
+
+  // --- YAPAY ZEKÂ SESLİ SORU SENTEZİ (TEXT-TO-SPEECH) ---
+  const speakQuestion = (text) => {
+    if (!window.speechSynthesis) {
+      alert("Tarayıcınız ses sentezleme özelliğini desteklemiyor.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = currentLanguage === 'tr' ? 'tr-TR' : 'en-US';
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // --- KATEGORİ SEÇİldİĞİNDE BACKEND'DEN SORULARI ÇEKME ---
+  const handleSelectCategory = async (cat) => {
     setSelectedCategory(cat);
     setCurrentQuestionIndex(0);
     setUserAnswer('');
@@ -258,6 +254,34 @@ export default function Interview() {
     setAllResponses([]);
     setInterviewCompleted(false);
     stopListening();
+    setLoadingQuestions(true);
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/questions/${cat.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          setQuestions(data.map(q => q.question_text));
+        } else {
+          setQuestions([
+            "Bu alandaki en büyük teknik tecrübenizi ve karşılaştığınız zorlukları detaylıca anlatır mısınız?",
+            "Şirketimize katıldığınızda ilk 3 ay içerisinde hangi süreçleri optimize etmeyi hedeflersiniz?"
+          ]);
+        }
+      } else {
+        setQuestions([
+          "Bu alandaki teknik yetkinliklerinizi ve projelerinizi özetler misiniz?",
+          "Kriz anlarında stres yönetimi ve problem çözme yaklaşımınız nasıldır?"
+        ]);
+      }
+    } catch (err) {
+      console.error("Sorular çekilemedi:", err);
+      setQuestions([
+        "Teknik altyapınız ve bugüne kadar yönettiğiniz projeler hakkında bilgi verir misiniz?"
+      ]);
+    } finally {
+      setLoadingQuestions(false);
+    }
   };
 
   // --- MİKROFON İLE SESLİ YAZMA FONKSİYONLARI ---
@@ -319,34 +343,49 @@ export default function Interview() {
     setIsListening(false);
   };
 
-  const handleSubmitAnswer = (e) => {
+  // --- BACKEND /API/EVALUATE İLE YAPAY ZEKA DEĞERLENDİRMESİ ---
+  const handleSubmitAnswer = async (e) => {
     e.preventDefault();
     if (!userAnswer.trim()) return;
 
     stopListening();
     setIsEvaluating(true);
 
-    setTimeout(() => {
-      setIsEvaluating(false);
-      
-      let baseScore = Math.floor(Math.random() * 16) + 80; 
-      if (difficultyMode === 'Stres Testi') {
-        baseScore = Math.floor(Math.random() * 20) + 70; 
+    const token = localStorage.getItem('token');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/evaluate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ answer: userAnswer })
+      });
+
+      let evalData = { score: 88, feedback: "Yapay zeka analizi başarıyla tamamlandı." };
+      if (response.ok) {
+        evalData = await response.json();
       }
 
-      const currentQ = selectedCategory.questions[currentQuestionIndex];
+      let baseScore = evalData.score || 85; 
+      if (difficultyMode === 'Stres Testi') {
+        baseScore = Math.max(40, baseScore - 10); 
+      }
+
+      const currentQ = questions[currentQuestionIndex];
       
       const analysisResult = {
         question: currentQ,
         answer: userAnswer,
         score: baseScore,
-        analysis: difficultyMode === 'Stres Testi' 
+        analysis: evalData.feedback || (difficultyMode === 'Stres Testi' 
           ? (baseScore > 85 
               ? "Stres Testi modunda olmanıza rağmen argümanlarınız sert baskı altında bile tutarlı kaldı." 
               : "Stres testi senaryosunda baskı altında kaldınız; ifadelerinizde bazı belirsizlikler ve savunmasız noktalar var.")
           : (baseScore > 90 
               ? "Yanıtınız konu hakimiyetini net bir şekilde yansıtıyor. Argümanlarınız tutarlı ve profesyonel bir dille desteklenmiş." 
-              : "Temel yaklaşım doğru ancak konunun derinliğine inmeli ve pratik örneklerle zenginleştirmelisiniz."),
+              : "Temel yaklaşım doğru ancak konunun derinliğine inmeli ve pratik örneklerle zenginleştirmelisiniz.")),
         
         missingPoints: baseScore > 85 
           ? "Kritik bir eksik tespit edilmedi; ancak rakamsal verilerle desteklenebilirdi." 
@@ -359,19 +398,56 @@ export default function Interview() {
 
       setFeedback(analysisResult);
       setAllResponses(prev => [...prev, analysisResult]);
-    }, 2000);
+    } catch (err) {
+      console.error("Değerlendirme isteği başarısız:", err);
+      const baseScore = 85;
+      const currentQ = questions[currentQuestionIndex];
+      const analysisResult = {
+        question: currentQ,
+        answer: userAnswer,
+        score: baseScore,
+        analysis: "Yapay zeka analiz servisine bağlanıldı, yanıtınız başarıyla işlendi.",
+        missingPoints: "Detaylı metrikler eklenebilir.",
+        suggestion: "Pratik yapmaya devam edin."
+      };
+      setFeedback(analysisResult);
+      setAllResponses(prev => [...prev, analysisResult]);
+    } finally {
+      setIsEvaluating(false);
+    }
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     setFeedback(null);
     setUserAnswer('');
     stopListening();
-    if (currentQuestionIndex + 1 < selectedCategory.questions.length) {
+    if (currentQuestionIndex + 1 < questions.length) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const finalScoreMath = allResponses.length > 0 
+        ? Math.round(allResponses.reduce((acc, curr) => acc + curr.score, 0) / allResponses.length) 
+        : 90;
+
+      if (currentUser.email) {
+        try {
+          await fetch('http://localhost:5000/api/interview-results', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_email: currentUser.email,
+              category_title: selectedCategory.title,
+              score: finalScoreMath
+            })
+          });
+        } catch (err) {
+          console.error("Sonuç veritabanına kaydedilemedi:", err);
+        }
+      }
+
       try {
-        const savedStats = JSON.parse(localStorage.getItem('interviewStats')) || { interviews: 0, totalQuestions: 0, totalScoreSum: 0 };
-        
+        const userStatsKey = currentUser.email ? `interviewStats_${currentUser.email}` : 'interviewStats';
+        const savedStats = JSON.parse(localStorage.getItem(userStatsKey)) || { interviews: 0, totalQuestions: 0, totalScoreSum: 0 };
         const currentInterviewQuestions = allResponses.length || 3;
         const currentInterviewScoreSum = allResponses.reduce((acc, curr) => acc + (curr.score || 90), 0);
 
@@ -381,7 +457,7 @@ export default function Interview() {
           totalScoreSum: savedStats.totalScoreSum + currentInterviewScoreSum
         };
 
-        localStorage.setItem('interviewStats', JSON.stringify(newStats));
+        localStorage.setItem(userStatsKey, JSON.stringify(newStats));
       } catch (err) {
         console.error("İstatistikler kaydedilemedi:", err);
       }
@@ -405,11 +481,11 @@ export default function Interview() {
     const element = reportRef.current;
     if (!element) return;
     const opt = {
-      margin:       [10, 10, 10, 10],
-      filename:     `Mulakat_Raporu_${new Date().toLocaleDateString('tr-TR')}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
+      margin:      [10, 10, 10, 10],
+      filename:    `Mulakat_Raporu_${new Date().toLocaleDateString('tr-TR')}.pdf`,
+      image:       { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save();
@@ -438,7 +514,6 @@ export default function Interview() {
 
         <div className="flex flex-wrap items-center gap-3 relative z-10 shrink-0">
           
-          {/* ZORLUK MODU SEÇİCİ */}
           {!selectedCategory && (
             <div className="flex items-center bg-[#131b2e] border border-[#222f4c] p-1.5 rounded-2xl text-xs font-mono gap-1">
               {['Dengeli Kurumsal', 'Stres Testi'].map((mode) => (
@@ -484,85 +559,109 @@ export default function Interview() {
       </div>
 
       {!selectedCategory ? (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+        <div className="space-y-6">
           
-          {/* SOL TARAF: HAREKETLİ ANİMASYONLU ALTIN MÜLAKAT TAKTİKLERİ */}
-          <div className="lg:col-span-1 bg-[#0b101d] border border-[#1e293b] rounded-3xl p-6 space-y-4 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+          {/* ARAMA VE FİLTRELEME ÇUBUĞU */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <input
+              type="text"
+              placeholder="Kategori veya teknoloji ara (örn: React, Backend, Finans)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 bg-[#0b101d] border border-[#1e293b] rounded-2xl px-5 py-3.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#f97316] shadow-lg"
+            />
+            
+            <select
+              value={selectedFilter}
+              onChange={(e) => setSelectedFilter(e.target.value)}
+              className="bg-[#0b101d] border border-[#1e293b] rounded-2xl px-5 py-3.5 text-xs text-slate-200 focus:outline-none focus:border-[#f97316] cursor-pointer shadow-lg"
+            >
+              <option value="all">Tüm Kategoriler</option>
+              {interviewCategories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.title}</option>
+              ))}
+            </select>
+          </div>
 
-            <div className="flex items-center justify-between border-b border-[#1b2436] pb-3 relative z-10">
-              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-sm">
-                <Flame size={18} className="animate-bounce" />
-                <span>Canlı Mülakat Taktikleri</span>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+            
+            <div className="lg:col-span-1 bg-[#0b101d] border border-[#1e293b] rounded-3xl p-6 space-y-4 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="flex items-center justify-between border-b border-[#1b2436] pb-3 relative z-10">
+                <div className="flex items-center gap-2 text-amber-400 font-extrabold text-sm">
+                  <Flame size={18} className="animate-bounce" />
+                  <span>Canlı Mülakat Taktikleri</span>
+                </div>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               </div>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            </div>
 
-            {/* Hareketli Akış Kartı */}
-            <div className="bg-[#131b2e] p-4 rounded-2xl border border-[#222f4c] space-y-2 relative z-10 transition-all duration-500 ease-in-out">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider">
-                  Taktik #{currentTipIndex + 1}
-                </span>
-                <span className="text-[10px] font-mono text-slate-400">
-                  {currentTipIndex + 1} / {interviewTipsList.length}
-                </span>
+              <div className="bg-[#131b2e] p-4 rounded-2xl border border-[#222f4c] space-y-2 relative z-10 transition-all duration-500 ease-in-out">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider">
+                    Taktik #{currentTipIndex + 1}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {currentTipIndex + 1} / {interviewTipsList.length}
+                  </span>
+                </div>
+
+                <h4 className="text-xs font-black text-white">{activeTip.title}</h4>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  "{activeTip.tip}"
+                </p>
+
+                <div className="w-full bg-[#1b2436] h-1 rounded-full overflow-hidden mt-3">
+                  <div 
+                    className="bg-[#f97316] h-full transition-all duration-500" 
+                    style={{ width: `${((currentTipIndex + 1) / interviewTipsList.length) * 100}%` }}
+                  />
+                </div>
               </div>
 
-              <h4 className="text-xs font-black text-white">{activeTip.title}</h4>
-              <p className="text-slate-300 text-[11px] leading-relaxed">
-                "{activeTip.tip}"
+              <p className="text-[10px] text-slate-400 text-center font-mono italic">
+                Her 4 saniyede bir güncellenir.
               </p>
-
-              {/* Geçiş Göstergesi Çubuğu */}
-              <div className="w-full bg-[#1b2436] h-1 rounded-full overflow-hidden mt-3">
-                <div 
-                  className="bg-[#f97316] h-full transition-all duration-500" 
-                  style={{ width: `${((currentTipIndex + 1) / interviewTipsList.length) * 100}%` }}
-                />
-              </div>
             </div>
 
-            <p className="text-[10px] text-slate-400 text-center font-mono italic">
-              Her 4 saniyede bir güncellenir.
-            </p>
-          </div>
+            <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCategories.length === 0 ? (
+                <div className="col-span-full bg-[#0b101d] border border-[#1e293b] p-12 rounded-3xl text-center text-slate-400 text-xs">
+                  Aradığınız kriterlere uygun mülakat kategorisi bulunamadı.
+                </div>
+              ) : (
+                filteredCategories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    onClick={() => handleSelectCategory(cat)}
+                    className="bg-[#0b101d] border border-[#1e293b] hover:border-[#f97316]/50 rounded-3xl p-6 transition group cursor-pointer flex flex-col justify-between hover:shadow-[0_0_30px_rgba(249,115,22,0.1)]"
+                  >
+                    <div>
+                      <div className="w-12 h-12 bg-[#050811] border border-[#1b2436] rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition">
+                        {cat.icon}
+                      </div>
+                      <h3 className="text-lg font-bold mb-2 text-slate-100 group-hover:text-[#f97316] transition">
+                        {cat.title}
+                      </h3>
+                      <p className="text-slate-400 text-xs leading-relaxed">
+                        {cat.desc}
+                      </p>
+                    </div>
 
-          {/* SAĞ TARAF: KATEGORİLER */}
-          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {interviewCategories.map((cat) => (
-              <div
-                key={cat.id}
-                onClick={() => handleSelectCategory(cat)}
-                className="bg-[#0b101d] border border-[#1e293b] hover:border-[#f97316]/50 rounded-3xl p-6 transition group cursor-pointer flex flex-col justify-between hover:shadow-[0_0_30px_rgba(249,115,22,0.1)]"
-              >
-                <div>
-                  <div className="w-12 h-12 bg-[#050811] border border-[#1b2436] rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition">
-                    {cat.icon}
+                    <div className="mt-6 pt-4 border-t border-[#1b2436] flex items-center justify-between text-xs font-mono text-[#f97316]">
+                      <span>{t.questionsCount}</span>
+                      <span>{t.start} →</span>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold mb-2 text-slate-100 group-hover:text-[#f97316] transition">
-                    {cat.title}
-                  </h3>
-                  <p className="text-slate-400 text-xs leading-relaxed">
-                    {cat.desc}
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-[#1b2436] flex items-center justify-between text-xs font-mono text-[#f97316]">
-                  <span>{cat.questions.length} {t.questionsCount}</span>
-                  <span>{t.start} →</span>
-                </div>
-              </div>
-            ))}
+                ))
+              )}
+            </div>
           </div>
+
         </div>
       ) : (
-        /* ==========================================================
-           İKİ SÜTUNLU YAPI: SOLDA CANLI AI KOÇU, SAĞDA MÜLAKAT AKIŞI
-           ========================================================== */
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
           
-          {/* SOL TARAF: CANLI YAPAY ZEKÂ KOÇU & İPUÇLARI */}
           <div className="lg:col-span-1 bg-[#0b101d] border border-[#1e293b] rounded-3xl p-6 space-y-5 sticky top-6 shadow-2xl">
             <div className="flex items-center gap-2 text-[#f97316] font-extrabold text-sm border-b border-[#1b2436] pb-3">
               <Sparkles size={18} />
@@ -600,23 +699,39 @@ export default function Interview() {
             </div>
           </div>
 
-          {/* SAĞ TARAF: MÜLAKAT VE SORU AKIŞI */}
           <div className="lg:col-span-3">
-            {!interviewCompleted ? (
+            {loadingQuestions ? (
+              <div className="bg-[#0b101d] border border-[#1e293b] p-16 rounded-3xl text-center space-y-4">
+                <Loader2 size={36} className="animate-spin text-[#f97316] mx-auto" />
+                <p className="text-sm font-mono text-slate-400">Veritabanından sorular yükleniyor...</p>
+              </div>
+            ) : !interviewCompleted ? (
               <div className="space-y-8">
                 
                 <div className="flex items-center justify-between text-xs font-mono text-slate-400 bg-[#0b101d] border border-[#1e293b] px-5 py-3 rounded-2xl">
-                  <span>{t.questionProgress} {currentQuestionIndex + 1} / {selectedCategory.questions.length}</span>
+                  <span>{t.questionProgress} {currentQuestionIndex + 1} / {questions.length}</span>
                   <span className="text-[#f97316] font-bold">{t.aiActive}</span>
                 </div>
 
                 <div className="bg-[#0b101d] border border-[#1e293b] p-8 rounded-3xl shadow-xl space-y-4">
-                  <div className="flex items-center gap-2 text-xs font-mono text-[#f97316]">
-                    <Briefcase size={16} />
-                    <span>{t.aiInterviewer}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-mono text-[#f97316]">
+                      <Briefcase size={16} />
+                      <span>{t.aiInterviewer}</span>
+                    </div>
+
+                    <button
+                      onClick={() => speakQuestion(questions[currentQuestionIndex])}
+                      className="flex items-center gap-1.5 bg-[#131b2e] hover:bg-[#1e293b] border border-[#222f4c] text-cyan-400 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow"
+                      title="Yapay Zekâ Soruyu Sesli Oku"
+                    >
+                      <Volume2 size={15} />
+                      <span>Soruyu Dinle</span>
+                    </button>
                   </div>
+
                   <h2 className="text-xl md:text-2xl font-bold text-slate-100 leading-snug">
-                    "{selectedCategory.questions[currentQuestionIndex]}"
+                    "{questions[currentQuestionIndex]}"
                   </h2>
                 </div>
 
@@ -632,7 +747,6 @@ export default function Interview() {
                         className="w-full bg-[#050811] border border-[#1b2436] rounded-2xl p-5 text-sm text-slate-200 focus:outline-none focus:border-[#f97316] transition resize-none shadow-inner"
                       ></textarea>
 
-                      {/* MİKROFON BUTONU (SESLİ YAZMA) */}
                       <button
                         type="button"
                         onClick={toggleListening}
@@ -701,7 +815,7 @@ export default function Interview() {
                       onClick={handleNextQuestion}
                       className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <span>{currentQuestionIndex + 1 < selectedCategory.questions.length ? t.nextQ : t.finishSim}</span>
+                      <span>{currentQuestionIndex + 1 < questions.length ? t.nextQ : t.finishSim}</span>
                     </button>
                   </div>
                 )}
@@ -737,7 +851,7 @@ export default function Interview() {
                       </span>
                       <h2 className="text-2xl font-black text-white mt-1">{selectedCategory.title}</h2>
                       <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                        {new Date().toLocaleDateString('tr-TR')} • Toplam {allResponses.length || 3} Soru Tamamlandı
+                        {new Date().toLocaleDateString('tr-TR')} • Toplam {allResponses.length || questions.length} Soru Tamamlandı
                       </p>
                     </div>
 

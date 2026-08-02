@@ -68,6 +68,34 @@ app.put('/api/settings', verifyToken, async (req, res) => {
     }
 });
 
+// --- EKSİK OLAN ŞİFRE DEĞİŞTİRME ENDPOINT'İ BURAYA EKLENDİ ---
+app.put('/api/change-password', verifyToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newProvider && !newPassword) {
+        return res.status(400).json({ message: "Lütfen mevcut ve yeni şifrenizi girin." });
+    }
+
+    try {
+        const [users] = await db.query("SELECT * FROM users WHERE id = ?", [req.user.id]);
+        if (users.length === 0) {
+            return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+        }
+
+        const user = users[0];
+
+        if (user.password !== currentPassword) {
+            return res.status(400).json({ message: "Mevcut şifreniz hatalı." });
+        }
+
+        await db.query("UPDATE users SET password = ? WHERE id = ?", [newPassword, req.user.id]);
+
+        res.json({ message: "Şifreniz başarıyla güncellendi." });
+    } catch (err) {
+        console.error("Şifre değiştirme hatası:", err);
+        res.status(500).json({ message: "Sunucu hatası oluştu." });
+    }
+});
 const initDatabase = async () => {
     try {
         await db.query(`
@@ -262,6 +290,11 @@ app.post('/api/evaluate', verifyToken, async (req, res) => {
     res.json({ score, feedback: "Yapay zeka analizi başarıyla tamamlandı." });
 });
 
-app.listen(PORT, () => {
-    console.log(`Tam Sürüm Mülakat Backend (Ayarlar Modülü Dahil) ${PORT} portunda çalışıyor.`);
+app.listen(5000, '0.0.0.0', (err) => {
+    if (err) {
+        console.error("Listen hatası:", err);
+        return;
+    }
+
+    console.log("✅ Server 5000 portunda dinleniyor.");
 });

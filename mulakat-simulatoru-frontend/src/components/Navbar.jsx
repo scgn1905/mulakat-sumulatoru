@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { User, Settings, LogOut, Globe, LogIn, UserPlus } from 'lucide-react';
+import { User, Settings, LogOut, Globe, LogIn, UserPlus, Trophy } from 'lucide-react';
 
 export default function Navbar() {
   const { t, i18n } = useTranslation();
@@ -70,6 +70,10 @@ export default function Navbar() {
       {/* ORTA MENÜ LİNKLERİ */}
       <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
         <Link to="/" className="hover:text-cyan-400 transition">{t('navHome', 'Ana Sayfa')}</Link>
+        <Link to="/leaderboard" className="hover:text-cyan-400 transition flex items-center gap-1">
+          <Trophy size={14} className="text-amber-400" />
+          <span>{t('navLeaderboard', 'Liderlik')}</span>
+        </Link>
         <a href="/#features" className="hover:text-cyan-400 transition">{t('navFeatures', 'Özellikler')}</a>
         <Link to="/interview" className="hover:text-cyan-400 transition">{t('navInterviews', 'Mülakatlar')}</Link>
         <a href="/#pricing" className="hover:text-cyan-400 transition">{t('navPricing', 'Fiyatlar')}</a>
@@ -141,6 +145,14 @@ export default function Navbar() {
                 >
                   <User size={16} className="text-cyan-400" />
                   <span>{t('menuProfile', 'Profilim')}</span>
+                </button>
+
+                <button 
+                  onClick={() => { setProfileMenuOpen(false); navigate('/leaderboard'); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:bg-[#1b2436] hover:text-amber-400 transition cursor-pointer text-left font-medium"
+                >
+                  <Trophy size={16} className="text-amber-400" />
+                  <span>{t('menuLeaderboard', 'Liderlik Tablosu')}</span>
                 </button>
 
                 <button 
