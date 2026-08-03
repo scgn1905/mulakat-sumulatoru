@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   Terminal,
   Cpu,
-  Zap
+  Zap,
+  Bell
 } from 'lucide-react';
 
 export default function Home() {
@@ -25,6 +26,21 @@ export default function Home() {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState(null);
   const [currentScenario, setCurrentScenario] = useState(0);
+
+  // Veritabanından çekilecek sistem duyuruları state'i
+  const [announcements, setAnnouncements] = useState([]);
+
+  // Duyuruları backend'den çekme
+  useEffect(() => {
+    fetch('http://localhost:5000/api/announcements')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAnnouncements(data);
+        }
+      })
+      .catch(err => console.error("Duyurular yüklenemedi:", err));
+  }, []);
 
   // Terminal animasyonu için simüle edilmiş AI akış metinleri
   const terminalLines = [
@@ -79,20 +95,20 @@ export default function Home() {
     }
   };
 
-  // Fiyatlandırma yönlendirmesi: Pro için ödeme sayfasına, starter için mülakata veya kayıt sayfasına
+  // Fiyatlandırma yönlendirmesi
   const handlePricingAction = (planType) => {
     const token = localStorage.getItem('token');
     const isValidToken = token && token !== 'null' && token !== 'undefined' && token.trim() !== '';
 
     if (isValidToken) {
       if (planType === 'pro') {
-        navigate('/payment'); // Pro seçildiyse doğrudan ödeme/abone sayfasına yönlendirir
+        navigate('/payment');
       } else {
-        navigate('/interview'); // Starter veya ücretsiz paket için mülakat ekranına yönlendirir
+        navigate('/interview');
       }
     } else {
       localStorage.removeItem('token');
-      navigate('/register'); // Giriş yapılmamışsa kayıt sayfasına atar
+      navigate('/register');
     }
   };
 
@@ -147,7 +163,6 @@ export default function Home() {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  // GENİŞLETİLMİŞ SSS LİSTESİ
   const faqs = [
     {
       q: t('faq1Q', 'Şirket mülakat simülatörü yanıtlarımı nasıl analiz ediyor?'),
@@ -187,6 +202,55 @@ export default function Home() {
 
   return (
     <div className="space-y-36 pb-20 text-slate-900 dark:text-slate-100 relative">
+
+      {/* SİSTEM DUYURULARI BİLDİRİM ALANI */}
+      {announcements.length > 0 && (
+        <div className="max-w-4xl mx-auto px-6 my-8 pt-4">
+          <div className="relative bg-gradient-to-r from-cyan-500/10 via-teal-500/10 to-indigo-500/10 border border-cyan-500/40 p-6 rounded-3xl space-y-4 backdrop-blur-xl shadow-[0_0_30px_rgba(6,182,212,0.15)] overflow-hidden">
+            
+            {/* Arka plan parıltı efekti */}
+            <div className="absolute -right-10 -top-10 w-32 h-32 bg-cyan-400/20 blur-3xl rounded-full pointer-events-none"></div>
+
+            {/* Başlık ve Robot İkonu */}
+            <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-cyan-500/20 border border-cyan-400/40 rounded-2xl flex items-center justify-center animate-pulse">
+                  <span className="text-xl">🤖</span>
+                </div>
+                <div>
+                  <h3 className="text-cyan-600 dark:text-cyan-300 font-black text-sm tracking-wider uppercase flex items-center gap-2">
+                    Yapay Zekâ Canlı Bildirimleri
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">Sistem yöneticisinden güncel duyurular</p>
+                </div>
+              </div>
+              <Bell size={20} className="text-cyan-500 animate-bounce" />
+            </div>
+
+            {/* Duyuru Kartları Akışı */}
+            <div className="space-y-3">
+              {announcements.map((item) => (
+                <div 
+                  key={item.id} 
+                  className="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl border border-cyan-500/20 hover:border-cyan-400/60 transition-all duration-300 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 group"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-cyan-500 font-bold mt-0.5">✦</span>
+                    <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
+                      {item.message}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 px-2.5 py-1 rounded-full shrink-0 self-end sm:self-auto">
+                    {new Date(item.created_at).toLocaleDateString('tr-TR')}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* HERO SECTION */}
       <section className="relative pt-16 pb-12 flex flex-col items-center px-4 overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-slate-100/80 dark:bg-slate-950 transition-colors">
@@ -334,7 +398,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ÖZELLİKLER SECTION (6 PROFESYONEL ÖZELLİK KARTI) */}
+      {/* ÖZELLİKLER SECTION */}
       <section id="features" className="scroll-mt-24 px-6 md:px-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
           <div>
