@@ -62,30 +62,22 @@ app.post('/api/contact', async (req, res) => {
 // --- ŞİFRE SIFIRLAMA TALEBİ ---
 app.post('/api/forgot-password', async (req, res) => {
     const { email } = req.body;
-    console.log("--------------------------------------------------");
-    console.log("🔔 ŞİFRE SIFIRLAMA İSTEĞİ ALINDI - Email:", email);
-
     if (!email) {
         return res.status(400).json({ error: "Lütfen e-posta adresinizi girin." });
     }
 
     try {
         const [users] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
-        console.log("🔍 Veritabanında bulunan kullanıcı sayısı:", users.length);
-
         if (users.length === 0) {
-            console.log("⚠️ Uyarı: Bu e-posta veritabanında bulunamadı!");
             return res.json({ message: "Eğer bu e-posta adresi sistemde kayıtlıysa şifre sıfırlama bağlantısı gönderilmiştir." });
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
         await db.query("INSERT INTO password_resets (email, token) VALUES (?, ?)", [email, resetToken]);
-        console.log(`✅ BAŞARILI! Şifre Sıfırlama Linki Oluşturuldu: http://localhost:5175/reset-password?token=${resetToken}`);
-        console.log("--------------------------------------------------");
-        
+        console.log(`🔐 ŞİFRE SIFIRLAMA LİNKİ (Simülasyon): http://localhost:5175/reset-password?token=${resetToken}`);
         res.json({ message: "Şifre sıfırlama talimatları e-posta adresinize gönderildi. (Konsolu kontrol edin)" });
     } catch (err) {
-        console.error("❌ Şifre sıfırlama hatası:", err);
+        console.error("Şifre sıfırlama hatası:", err);
         logErrorToDB(email, err.message, '/api/forgot-password');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
@@ -198,11 +190,11 @@ const initDatabase = async () => {
         
         try {
             await db.query("ALTER TABLE user_settings ADD COLUMN email_notifications BOOLEAN DEFAULT TRUE");
-        } catch (e) { /* Sütun varsa geç */ }
+        } catch (e) { /* Sütun zaten varsa hata verir, yoksayıyoruz */ }
 
         try {
             await db.query("ALTER TABLE user_settings ADD COLUMN sound_effects BOOLEAN DEFAULT TRUE");
-        } catch (e) { /* Sütun varsa geç */ }
+        } catch (e) { /* Sütun zaten varsa hata verir, yoksayıyoruz */ }
         
         await db.query(`
             CREATE TABLE IF NOT EXISTS contact_messages (
@@ -265,6 +257,7 @@ const initDatabase = async () => {
             )
         `);
 
+        // --- HATA LOGLAMA TABLOSU OTOMATİK OLUŞTURMA ---
         await db.query(`
             CREATE TABLE IF NOT EXISTS error_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -317,9 +310,11 @@ app.get('/', (req, res) => {
     res.json({ message: "Mülakat Simülatörü Tam Sürüm Backend Aktif!" });
 });
 
+// --- KULLANICININ HAFTALIK HEDEF VE İlerleme DURUMU ---
 app.get('/api/user-weekly-goal', verifyToken, async (req, res) => {
     try {
         const userEmail = req.user.email;
+        
         const [settings] = await db.query("SELECT weekly_goal FROM user_settings WHERE user_id = ?", [req.user.id]);
         const weeklyGoal = settings[0]?.weekly_goal || 3;
 
@@ -333,13 +328,19 @@ app.get('/api/user-weekly-goal', verifyToken, async (req, res) => {
         const remaining = Math.max(0, weeklyGoal - completedCount);
         const progressPercent = Math.min(100, Math.round((completedCount / weeklyGoal) * 100));
 
-        res.json({ weeklyGoal, completedCount, remaining, progressPercent });
+        res.json({
+            weeklyGoal,
+            completedCount,
+            remaining,
+            progressPercent
+        });
     } catch (err) {
         console.error("Haftalık hedef takip hatası:", err);
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
 
+// --- ADMIN PANELİ İÇİN SON AKTİVİTELER VE LOG ÖZETİ ---
 app.get('/api/admin/activities-and-stats', verifyToken, async (req, res) => {
     try {
         if (req.user.email !== 'secginn@gmail.com') {
@@ -421,6 +422,7 @@ app.get('/api/profile', verifyToken, async (req, res) => {
 
 app.put('/api/profile', verifyToken, async (req, res) => {
     const { name, email } = req.body;
+    
     if (!name || !email) {
         return res.status(400).json({ error: "Ad ve e-posta alanları boş bırakılamaz." });
     }
@@ -484,6 +486,7 @@ app.get('/api/admin/users', verifyToken, async (req, res) => {
     }
 });
 
+// --- ADMIN PANELİ İÇİN HATA LOGLARINI ÇEKME ENDPOINT'İ ---
 app.get('/api/admin/error-logs', verifyToken, async (req, res) => {
     try {
         if (req.user.email !== 'secginn@gmail.com') {
@@ -600,6 +603,7 @@ app.get('/api/interview-results/:email', async (req, res) => {
     }
 });
 
+// --- LİDERLİK TABLOSU (KULLANICI BAŞINA TEK EN İYİ SKOR) ---
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const { category } = req.query;
@@ -641,9 +645,11 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
+// --- KULLANICIYA ÖZEL YETKİNLİK VE ISI HARİTASI İSTATİSTİKLERİ ---
 app.get('/api/user-heatmap', verifyToken, async (req, res) => {
     try {
         const userEmail = req.user.email;
+        
         const [results] = await db.query(
             "SELECT category_title, score FROM interview_results WHERE user_email = ? ORDER BY created_at DESC", 
             [userEmail]
@@ -719,7 +725,7 @@ app.post('/api/evaluate', verifyToken, async (req, res) => {
 
     } catch (err) {
         console.error("YAPAY ZEKA KRİTİK HATA:", err);
-        logErrorOToDB?.(req.user?.email, err.message, "/api/evaluate");
+        logErrorToDB(req.user?.email, err.message, "/api/evaluate");
         res.status(500).json({
             error: "Yapay zeka analizi sırasında hata: " + err.message
         });
