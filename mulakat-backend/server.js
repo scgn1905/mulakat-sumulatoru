@@ -18,6 +18,14 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// --- MERKEZİ HATA LOGLAMA FONKSİYONU ---
+const logErrorToDB = (email, message, route) => {
+    const query = "INSERT INTO error_logs (user_email, error_message, route) VALUES (?, ?, ?)";
+    db.query(query, [email || 'Misafir', message, route], (err) => {
+        if (err) console.error("Log veritabanına yazılamadı:", err);
+    });
+};
+
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -46,6 +54,7 @@ app.post('/api/contact', async (req, res) => {
         res.status(201).json({ message: "Mesajınız başarıyla gönderildi!" });
     } catch (err) {
         console.error("İletişim hatası:", err);
+        logErrorToDB(email, err.message, '/api/contact');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -69,6 +78,7 @@ app.post('/api/forgot-password', async (req, res) => {
         res.json({ message: "Şifre sıfırlama talimatları e-posta adresinize gönderildi. (Konsolu kontrol edin)" });
     } catch (err) {
         console.error("Şifre sıfırlama hatası:", err);
+        logErrorToDB(email, err.message, '/api/forgot-password');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -92,6 +102,7 @@ app.post('/api/reset-password', async (req, res) => {
         res.json({ message: "Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz." });
     } catch (err) {
         console.error("Şifre yenileme hatası:", err);
+        logErrorToDB(null, err.message, '/api/reset-password');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -131,6 +142,7 @@ app.put('/api/settings', verifyToken, async (req, res) => {
         res.json({ message: "Ayarlar başarıyla güncellendi ve kaydedildi!" });
     } catch (err) {
         console.error("Ayar güncelleme hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/settings');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -158,6 +170,7 @@ app.put('/api/change-password', verifyToken, async (req, res) => {
         res.json({ message: "Şifreniz başarıyla güncellendi." });
     } catch (err) {
         console.error("Şifre değiştirme hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/change-password');
         res.status(500).json({ message: "Sunucu hatası oluştu." });
     }
 });
@@ -174,6 +187,14 @@ const initDatabase = async () => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        
+        try {
+            await db.query("ALTER TABLE user_settings ADD COLUMN email_notifications BOOLEAN DEFAULT TRUE");
+        } catch (e) { /* Sütun zaten varsa hata verir, yoksayıyoruz */ }
+
+        try {
+            await db.query("ALTER TABLE user_settings ADD COLUMN sound_effects BOOLEAN DEFAULT TRUE");
+        } catch (e) { /* Sütun zaten varsa hata verir, yoksayıyoruz */ }
         
         await db.query(`
             CREATE TABLE IF NOT EXISTS contact_messages (
@@ -236,6 +257,17 @@ const initDatabase = async () => {
             )
         `);
 
+        // --- HATA LOGLAMA TABLOSU OTOMATİK OLUŞTURMA ---
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS error_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_email VARCHAR(255),
+                error_message TEXT,
+                route VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         console.log("Tablolar eksiksiz hazır.");
 
         const [rows] = await db.query("SELECT COUNT(*) as count FROM interview_questions");
@@ -278,6 +310,64 @@ app.get('/', (req, res) => {
     res.json({ message: "Mülakat Simülatörü Tam Sürüm Backend Aktif!" });
 });
 
+// --- KULLANICININ HAFTALIK HEDEF VE İlerleme DURUMU ---
+app.get('/api/user-weekly-goal', verifyToken, async (req, res) => {
+    try {
+        const userEmail = req.user.email;
+        
+        const [settings] = await db.query("SELECT weekly_goal FROM user_settings WHERE user_id = ?", [req.user.id]);
+        const weeklyGoal = settings[0]?.weekly_goal || 3;
+
+        const [results] = await db.query(`
+            SELECT COUNT(*) as completedCount 
+            FROM interview_results 
+            WHERE user_email = ? AND created_at >= NOW() - INTERVAL 7 DAY
+        `, [userEmail]);
+
+        const completedCount = results[0]?.completedCount || 0;
+        const remaining = Math.max(0, weeklyGoal - completedCount);
+        const progressPercent = Math.min(100, Math.round((completedCount / weeklyGoal) * 100));
+
+        res.json({
+            weeklyGoal,
+            completedCount,
+            remaining,
+            progressPercent
+        });
+    } catch (err) {
+        console.error("Haftalık hedef takip hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
+// --- ADMIN PANELİ İÇİN SON AKTİVİTELER VE LOG ÖZETİ ---
+app.get('/api/admin/activities-and-stats', verifyToken, async (req, res) => {
+    try {
+        if (req.user.email !== 'secginn@gmail.com') {
+            return res.status(403).json({ error: "Bu alana sadece süper yönetici erişebilir." });
+        }
+
+        const [recentResults] = await db.query("SELECT user_email, category_title, score, created_at FROM interview_results ORDER BY created_at DESC LIMIT 3");
+        const [recentUsers] = await db.query("SELECT name, email, created_at FROM users ORDER BY created_at DESC LIMIT 3");
+        const [recentMessages] = await db.query("SELECT name, email, created_at FROM contact_messages ORDER BY created_at DESC LIMIT 3");
+        const [todayErrors] = await db.query("SELECT COUNT(*) as count FROM error_logs WHERE DATE(created_at) = CURDATE()");
+        const [topRoute] = await db.query("SELECT route, COUNT(*) as count FROM error_logs GROUP BY route ORDER BY count DESC LIMIT 1");
+
+        res.json({
+            recentResults,
+            recentUsers,
+            recentMessages,
+            stats: {
+                todayErrorCount: todayErrors[0]?.count || 0,
+                topErrorRoute: topRoute[0]?.route || 'Veri Yok'
+            }
+        });
+    } catch (err) {
+        console.error("Aktivite ve istatistik hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
 app.post('/api/register', async (req, res) => {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -293,6 +383,7 @@ app.post('/api/register', async (req, res) => {
         res.status(201).json({ message: "Kayıt başarıyla oluşturuldu!" });
     } catch (err) {
         console.error("Kayıt hatası:", err);
+        logErrorToDB(email, err.message, '/api/register');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -312,6 +403,7 @@ app.post('/api/login', async (req, res) => {
         res.json({ message: "Giriş başarılı!", token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
     } catch (err) {
         console.error("Giriş hatası:", err);
+        logErrorToDB(email, err.message, '/api/login');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -323,6 +415,7 @@ app.get('/api/profile', verifyToken, async (req, res) => {
         res.json(users[0]);
     } catch (err) {
         console.error("Profil hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/profile');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -344,6 +437,7 @@ app.put('/api/profile', verifyToken, async (req, res) => {
         res.json({ message: "Profil bilgileri başarıyla güncellendi." });
     } catch (err) {
         console.error("Profil güncelleme hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/profile (PUT)');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -359,6 +453,7 @@ app.get('/api/settings', verifyToken, async (req, res) => {
         res.json(settings[0]);
     } catch (err) {
         console.error("Ayarları getirme hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/settings');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -372,6 +467,7 @@ app.get('/api/admin/messages', verifyToken, async (req, res) => {
         res.json(messages);
     } catch (err) {
         console.error("Mesajları getirme hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/admin/messages');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -385,6 +481,21 @@ app.get('/api/admin/users', verifyToken, async (req, res) => {
         res.json(users);
     } catch (err) {
         console.error("Kullanıcıları getirme hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/admin/users');
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
+// --- ADMIN PANELİ İÇİN HATA LOGLARINI ÇEKME ENDPOINT'İ ---
+app.get('/api/admin/error-logs', verifyToken, async (req, res) => {
+    try {
+        if (req.user.email !== 'secginn@gmail.com') {
+            return res.status(403).json({ error: "Bu alana sadece süper yönetici erişebilir." });
+        }
+        const [logs] = await db.query("SELECT * FROM error_logs ORDER BY created_at DESC LIMIT 50");
+        res.json(logs);
+    } catch (err) {
+        console.error("Logları getirme hatası:", err);
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -402,6 +513,7 @@ app.post('/api/announcements', verifyToken, async (req, res) => {
         res.status(201).json({ message: "Duyuru başarıyla yayınlandı!" });
     } catch (err) {
         console.error("Duyuru ekleme hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/announcements');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -412,6 +524,7 @@ app.get('/api/announcements', async (req, res) => {
         res.json(rows);
     } catch (err) {
         console.error("Duyuruları getirme hatası:", err);
+        logErrorToDB(null, err.message, '/api/announcements (GET)');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -425,6 +538,7 @@ app.delete('/api/announcements/:id', verifyToken, async (req, res) => {
         res.json({ message: "Duyuru başarıyla silindi." });
     } catch (err) {
         console.error("Duyuru silme hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/announcements/:id (DELETE)');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -436,6 +550,7 @@ app.get('/api/questions/:categoryId', async (req, res) => {
         res.json(rows);
     } catch (err) {
         console.error("Soru getirme hatası:", err);
+        logErrorToDB(null, err.message, '/api/questions/:categoryId');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -449,6 +564,7 @@ app.post('/api/questions', verifyToken, async (req, res) => {
         await db.query("INSERT INTO interview_questions (category_id, question_text) VALUES (?, ?)", [category_id, question_text]);
         res.status(201).json({ message: "Soru eklendi." });
     } catch (err) {
+        logErrorToDB(req.user?.email, err.message, '/api/questions (POST)');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -461,6 +577,7 @@ app.delete('/api/questions/:id', verifyToken, async (req, res) => {
         await db.query("DELETE FROM interview_questions WHERE id = ?", [req.params.id]);
         res.json({ message: "Soru silindi." });
     } catch (err) {
+        logErrorToDB(req.user?.email, err.message, '/api/questions/:id (DELETE)');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -471,6 +588,7 @@ app.post('/api/interview-results', async (req, res) => {
         await db.query("INSERT INTO interview_results (user_email, category_title, score) VALUES (?, ?, ?)", [user_email, category_title, score]);
         res.status(201).json({ message: "Sonuç kaydedildi." });
     } catch (err) {
+        logErrorToDB(user_email, err.message, '/api/interview-results');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -480,20 +598,49 @@ app.get('/api/interview-results/:email', async (req, res) => {
         const [rows] = await db.query("SELECT * FROM interview_results WHERE user_email = ? ORDER BY created_at DESC", [req.params.email]);
         res.json(rows);
     } catch (err) {
+        logErrorToDB(req.params.email, err.message, '/api/interview-results/:email');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
 
+// --- LİDERLİK TABLOSU (KULLANICI BAŞINA TEK EN İYİ SKOR) ---
 app.get('/api/leaderboard', async (req, res) => {
     try {
-        const [rows] = await db.query(`
-            SELECT user_email, category_title, score, created_at 
-            FROM interview_results 
-            ORDER BY score DESC, created_at DESC
-        `);
+        const { category } = req.query;
+        let query = `
+            SELECT r.user_email, MAX(r.score) as score, COUNT(r.id) as interviews, MAX(r.created_at) as created_at, u.name 
+            FROM interview_results r 
+            LEFT JOIN users u ON r.user_email = u.email
+        `;
+        let queryParams = [];
+
+        if (category && category !== 'all') {
+            query += ` WHERE `;
+            if (category === 'frontend' || category === 'Yazılım') {
+                query += ` (r.category_title LIKE ? OR r.category_title LIKE ? OR r.category_title LIKE ?) `;
+                queryParams.push('%frontend%', '%backend%', '%Yazılım%');
+            } else if (category === 'hr' || category === 'İK') {
+                query += ` (r.category_title LIKE ? OR r.category_title LIKE ? OR r.category_title LIKE ?) `;
+                queryParams.push('%hr%', '%İK%', '%Davranışsal%');
+            } else if (category === 'english' || category === 'İngilizce') {
+                query += ` (r.category_title LIKE ? OR r.category_title LIKE ?) `;
+                queryParams.push('%english%', '%İngilizce%');
+            } else if (category === 'product' || category === 'Ürün') {
+                query += ` (r.category_title LIKE ? OR r.category_title LIKE ?) `;
+                queryParams.push('%product%', '%Ürün%');
+            } else {
+                query += ` r.category_title LIKE ? `;
+                queryParams.push(`%${category}%`);
+            }
+        }
+
+        query += ` GROUP BY r.user_email, u.name ORDER BY score DESC LIMIT 10`;
+
+        const [rows] = await db.query(query, queryParams);
         res.json(rows);
     } catch (err) {
         console.error("Liderlik tablosu hatası:", err);
+        logErrorToDB(null, err.message, '/api/leaderboard');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
@@ -530,11 +677,11 @@ app.get('/api/user-heatmap', verifyToken, async (req, res) => {
         res.json(stats);
     } catch (err) {
         console.error("Isı haritası veri hatası:", err);
+        logErrorToDB(req.user?.email, err.message, '/api/user-heatmap');
         res.status(500).json({ error: "Sunucu hatası oluştu." });
     }
 });
 
-// --- YAPAY ZEKA DEĞERLENDİRME ENDPOINT'İ ---
 app.post('/api/evaluate', verifyToken, async (req, res) => {
     const { question, answer } = req.body;
 
@@ -544,41 +691,47 @@ app.post('/api/evaluate', verifyToken, async (req, res) => {
 
     try {
         const apiKey = process.env.GEMINI_API_KEY;
-        const prompt = "You are a senior technical interview expert. Analyze the question and candidate's answer. Question: \"" + question + "\". Candidate's Answer: \"" + answer + "\". RULES: 1. If the answer is nonsense, irrelevant, too short, or a single point/character, give a score strictly between 0 and 20. 2. Evaluate the response seriously based on technical aspects and the STAR method. 3. If the question or context is in Turkish, write the feedback in Turkish. If it is in English, write the feedback in English. Return your response STRICTLY as a JSON object, with no other text or markdown: {\"score\": 15, \"feedback\": \"Feedback text in the matching language\"}";
 
-        const fetchUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
-
-        const geminiResponse = await fetch(fetchUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
-        });
-
-        const data = await geminiResponse.json();
-
-        if (data.error) {
-            throw new Error(data.error.message);
+        if (!apiKey || apiKey.trim() === "") {
+            return res.status(500).json({
+                error: "Sunucu yapılandırma hatası: Gemini API Anahtarı eksik."
+            });
         }
 
-        let rawText = data.candidates[0].content.parts[0].text;
-        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const prompt = `...`; // Senin uzun prompt'un
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: prompt,
+        });
+
+        let rawText = response.text();
+
+        if (!rawText) {
+            throw new Error("Yapay zekadan boş yanıt döndü.");
+        }
+
+        rawText = rawText
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim();
 
         const result = JSON.parse(rawText);
-        res.json({ score: result.score, feedback: result.feedback });
+
+        res.json({
+            score: result.score,
+            feedback: result.feedback
+        });
 
     } catch (err) {
-        console.error("YAPAY ZEKA HATASI:", err);
-        res.status(500).json({ error: "Yapay zeka analizi sırasında hata: " + err.message });
+        console.error("YAPAY ZEKA KRİTİK HATA:", err);
+        logErrorToDB(req.user?.email, err.message, "/api/evaluate");
+        res.status(500).json({
+            error: "Yapay zeka analizi sırasında hata: " + err.message
+        });
     }
 });
 
-app.listen(5000, '0.0.0.0', (err) => {
-    if (err) {
-        console.error("Listen hatası:", err);
-        return;
-    }
-
-    console.log("✅ Server 5000 portunda dinleniyor.");
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });

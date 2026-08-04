@@ -91,14 +91,14 @@ export default function Settings() {
   const handleChange = (field, value) => {
     setSettingsData(prev => ({ ...prev, [field]: value }));
   };
-const handleSave = async (e) => {
+
+  const handleSave = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     const token = localStorage.getItem('token');
 
     try {
       if (token) {
-        // 1. Ayarları Güncelleme
         const response = await fetch('/api/settings', {
           method: 'PUT',
           headers: {
@@ -121,7 +121,6 @@ const handleSave = async (e) => {
           throw new Error("Ayarlar sunucuya kaydedilemedi.");
         }
 
-        // 2. Profil Adı ve E-postasını Güncelleme
         const profileRes = await fetch('/api/profile', {
           method: 'PUT',
           headers: {
@@ -161,7 +160,6 @@ const handleSave = async (e) => {
     }
   };
 
-  // --- ASYNC EKLENEREK DÜZELTİLEN ŞİFRE DEĞİŞTİRME İŞLEMİ ---
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     setPasswordMessage({ text: '', type: '' });
@@ -395,7 +393,7 @@ const handleSave = async (e) => {
                     }}
                     className={`flex items-center justify-between p-4 rounded-2xl border transition cursor-pointer bg-slate-950 ${
                       isSelected ? 'border-2 font-bold' : 'border-slate-800 hover:border-slate-700'
-                    }`}
+                  }`}
                   >
                     <div className="flex items-center gap-3">
                       <div 
@@ -434,45 +432,52 @@ const handleSave = async (e) => {
               </div>
               <input 
                 type="checkbox"
-                checked={settingsData.emailNotifications}
+                checked={Boolean(settingsData.emailNotifications)}
                 onChange={(e) => handleChange('emailNotifications', e.target.checked)}
                 className="w-4 h-4 accent-cyan-400 cursor-pointer"
               />
-            </label>
+          </label>
 
-            <label className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
-              <div className="flex items-center gap-3">
-                <Volume2 size={18} className="text-cyan-400" />
-                <div>
-                  <span className="text-sm font-semibold block text-slate-200">Mülakat Ses Efektleri</span>
-                  <span className="text-xs text-slate-400">Simülasyon içi geri sayım, başarı ve geçiş sesleri.</span>
-                </div>
+          <label className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
+            <div className="flex items-center gap-3">
+              <Volume2 size={18} className="text-cyan-400" />
+              <div>
+                <span className="text-sm font-semibold block text-slate-200">Mülakat Ses Efektleri</span>
+                <span className="text-xs text-slate-400">Simülasyon içi geri sayım, başarı ve geçiş sesleri.</span>
               </div>
-              <input 
-                type="checkbox"
-                checked={settingsData.soundEffects}
-                onChange={(e) => handleChange('soundEffects', e.target.checked)}
-                className="w-4 h-4 accent-cyan-400 cursor-pointer"
-              />
-            </label>
-          </div>
+            </div>
+            <input 
+              type="checkbox"
+              checked={Boolean(settingsData.soundEffects)}
+              onChange={(e) => handleChange('soundEffects', e.target.checked)}
+              className="w-4 h-4 accent-cyan-400 cursor-pointer"
+          />
+          </label>
         </div>
+      </div>
 
-        {/* --- ŞİFRE DEĞİŞTİRME BÖLÜMÜ (FORMUN İÇİNDE) --- */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
+        {/* --- ŞİFRE DEĞİŞTİRME BÖLÜMÜ (CANLI GÜÇ ÇUBUĞU İLE MODERN UI) --- */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
+
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-            <div className="w-10 h-10 bg-slate-800 text-cyan-400 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 text-cyan-400 rounded-xl flex items-center justify-center">
               <Lock size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Şifre Değiştir</h2>
-              <p className="text-xs text-slate-400">Hesap güvenliğinizi korumak için şifrenizi güncelleyin.</p>
+              <h2 className="text-lg font-bold">Güvenlik & Şifre Yönetimi</h2>
+              <p className="text-xs text-slate-400">Hesabınızı korumak için güçlü bir şifre tercih edin.</p>
             </div>
           </div>
 
           {passwordMessage.text && (
-            <div className={`p-4 rounded-xl text-xs font-bold ${passwordMessage.type === 'error' ? 'bg-red-950/60 border border-red-500/40 text-red-300' : 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300'}`}>
-              {passwordMessage.text}
+            <div className={`p-4 rounded-2xl text-xs font-bold transition-all animate-fade-in flex items-center gap-2 ${
+              passwordMessage.type === 'error' 
+                ? 'bg-rose-950/40 border border-rose-500/40 text-rose-300 shadow-lg shadow-rose-500/5' 
+                : 'bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 shadow-lg shadow-emerald-500/5'
+          }`}>
+              <span>{passwordMessage.type === 'error' ? '⚠️' : '🎉'}</span>
+              <span>{passwordMessage.text}</span>
             </div>
           )}
 
@@ -484,7 +489,7 @@ const handleSave = async (e) => {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition shadow-inner"
               />
             </div>
 
@@ -495,9 +500,19 @@ const handleSave = async (e) => {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition"
+                  placeholder="En az 6 karakter"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition shadow-inner"
                 />
+                {newPassword && (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex gap-1 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                      <div className={`h-full transition-all duration-300 ${newPassword.length < 6 ? 'w-1/3 bg-rose-500' : newPassword.length < 10 ? 'w-2/3 bg-amber-500' : 'w-full bg-emerald-500'}`} />
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {newPassword.length < 6 ? 'Zayıf şifre' : newPassword.length < 10 ? 'Orta güçte' : 'Güçlü şifre'}
+                  </span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -507,35 +522,35 @@ const handleSave = async (e) => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition"
-                />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition shadow-inner"
+              />
               </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={handlePasswordChange}
-                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-bold px-6 py-3 rounded-xl transition cursor-pointer text-xs"
-              >
-                <Lock size={15} />
-                <span>Şifreyi Güncelle</span>
-              </button>
-            </div>
           </div>
-        </div>
 
-        {/* --- DEĞİŞİKLİKLERİ KAYDET BUTONU EN ALTTA --- */}
-        <div className="flex justify-end pt-4">
-          <button
-            type="submit"
-            className="flex items-center gap-2 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold px-8 py-4 rounded-2xl shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer"
+          <div className="flex justify-end pt-3">
+            <button
+              type="button"
+              onClick={handlePasswordChange}
+            className="flex items-center gap-2 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 border border-slate-700 text-slate-100 font-extrabold px-6 py-3 rounded-xl transition cursor-pointer text-xs shadow-lg shadow-black/30"
           >
-            <Save size={18} />
-            <span>{t('saveChanges', 'Değişiklikleri Kaydet')}</span>
+            <Lock size={15} className="text-cyan-400" />
+            <span>Şifreyi Güvenli Güncelle</span>
           </button>
         </div>
-      </form>
+      </div>
     </div>
+
+      {/* --- DEĞİŞİKLİKLERİ KAYDET BUTONU EN ALTTA --- */}
+      <div className="flex justify-end pt-4">
+        <button
+          type="submit"
+          className="flex items-center gap-2 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold px-8 py-4 rounded-2xl shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer"
+        >
+          <Save size={18} />
+          <span>{t('saveChanges', 'Değişiklikleri Kaydet')}</span>
+        </button>
+      </div>
+    </form>
+  </div>
   );
 }

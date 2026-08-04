@@ -29,8 +29,91 @@ import {
   Zap,
   Flame,
   Volume2,
-  Clock
+  Clock,
+  Bot,
+  Brain,
+  Smile,
+  ShieldAlert
 } from 'lucide-react';
+
+// --- YENİ EKLENEN: AI KARIYER AVATARI & MİMİK BİLEŞENİ ---
+function AiInterviewerAvatar({ aiMood = 'listening' }) {
+  const getMoodConfig = () => {
+    switch (aiMood) {
+      case 'thinking':
+        return {
+          icon: <Brain className="text-cyan-400 animate-spin" size={32} />,
+          bgGlow: 'from-cyan-500/20 to-indigo-500/20 border-cyan-500/50',
+          title: 'Yapay Zekâ Analiz Ediyor...',
+          subtitle: 'Yanıtınız STAR metodolojisine göre işleniyor',
+          animation: 'animate-pulse'
+        };
+      case 'smiling':
+        return {
+          icon: <Smile className="text-emerald-400" size={32} />,
+          bgGlow: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/50',
+          title: 'Harika Bir Yanıt!',
+          subtitle: 'Teknik detaylar ve akıcılık çok başarılı',
+          animation: 'animate-bounce'
+        };
+      case 'serious':
+        return {
+          icon: <ShieldAlert className="text-amber-400" size={32} />,
+          bgGlow: 'from-amber-500/20 to-rose-500/20 border-amber-500/50',
+          title: 'Kritik Değerlendirme Modu',
+          subtitle: 'Daha derinlemesine teknik örnekler bekleniyor',
+          animation: 'animate-pulse'
+        };
+      default: // 'listening'
+        return {
+          icon: <Bot className="text-teal-400" size={32} />,
+          bgGlow: 'from-teal-500/20 to-cyan-500/20 border-teal-500/40',
+          title: 'Mülakatör Dinliyor...',
+          subtitle: 'Diksiyonunuz ve kelime seçimleriniz takip ediliyor',
+          animation: 'animate-bounce'
+        };
+    }
+  };
+
+  const config = getMoodConfig();
+
+  return (
+    <div className={`relative bg-gradient-to-r ${config.bgGlow} border p-5 rounded-3xl backdrop-blur-xl shadow-2xl flex items-center gap-5 transition-all duration-500 overflow-hidden mb-6`}>
+      <div className="absolute -right-10 -top-10 w-32 h-32 bg-cyan-400/10 blur-3xl rounded-full pointer-events-none"></div>
+
+      <div className="relative">
+        <div className={`w-16 h-16 bg-slate-950/90 border border-slate-800 rounded-2xl flex items-center justify-center shadow-inner ${config.animation}`}>
+          {config.icon}
+        </div>
+        <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 border-2 border-slate-950 rounded-full animate-ping"></span>
+        <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 border-2 border-slate-950 rounded-full"></span>
+      </div>
+
+      <div className="space-y-1 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono uppercase tracking-widest bg-cyan-500/10 text-cyan-400 px-2.5 py-0.5 rounded-full border border-cyan-500/20 font-bold">
+            AI Senior Interviewer
+          </span>
+          <span className="text-[10px] font-mono text-slate-400">// v2.0 Live Stream</span>
+        </div>
+        <h4 className="text-base font-black text-slate-100 tracking-tight">
+          {config.title}
+        </h4>
+        <p className="text-xs text-slate-400 font-medium">
+          {config.subtitle}
+        </p>
+      </div>
+
+      <div className="hidden sm:flex items-center gap-1 px-3">
+        <div className="w-1 h-4 bg-cyan-400 animate-pulse rounded-full"></div>
+        <div className="w-1 h-7 bg-teal-400 animate-pulse rounded-full" style={{ animationDelay: '200ms' }}></div>
+        <div className="w-1 h-5 bg-indigo-400 animate-pulse rounded-full" style={{ animationDelay: '400ms' }}></div>
+        <div className="w-1 h-8 bg-cyan-400 animate-pulse rounded-full" style={{ animationDelay: '100ms' }}></div>
+        <div className="w-1 h-3 bg-teal-400 animate-pulse rounded-full" style={{ animationDelay: '300ms' }}></div>
+      </div>
+    </div>
+  );
+}
 
 export default function Interview() {
   const navigate = useNavigate();
@@ -44,6 +127,9 @@ export default function Interview() {
   const [currentLanguage, setCurrentLanguage] = useState('tr');
   const [allResponses, setAllResponses] = useState([]);
   const [interviewCompleted, setInterviewCompleted] = useState(false);
+
+  // --- AI MÜLAKATÖR MİMİK / RUH HALİ STATE'İ ---
+  const [aiMood, setAiMood] = useState('listening');
 
   // --- ZORLUK / MOD SEÇİMİ ---
   const [difficultyMode, setDifficultyMode] = useState('Dengeli Kurumsal');
@@ -67,7 +153,6 @@ export default function Interview() {
   const QUESTION_TIME_LIMIT = 60; // Her soru için 60 saniye
 
   const handleTimeUp = () => {
-    // Süre bittiğinde yapılacak işlemler (isteğe bağlı uyarı veya otomatik geçiş eklenebilir)
     console.log("Süre doldu!");
   };
 
@@ -157,7 +242,6 @@ export default function Interview() {
     ]
   };
 
-  // --- HAREKETLİ ALTIN MÜLAKAT TAKTİKLERİ LİSTESİ ---
   const interviewTipsList = [
     { 
       title: "STAR Metodu Kuralı", 
@@ -181,7 +265,6 @@ export default function Interview() {
     }
   ];
 
-  // Her 4 saniyede bir taktikleri değiştiren animasyon sayacı
   useEffect(() => {
     const tipInterval = setInterval(() => {
       setCurrentTipIndex((prev) => (prev + 1) % interviewTipsList.length);
@@ -234,7 +317,6 @@ export default function Interview() {
     }
   ];
 
-  // --- KATEGORİ FİLTRELEME MANTIĞI ---
   const filteredCategories = interviewCategories.filter(cat => {
     const matchesSearch = cat.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           cat.desc.toLowerCase().includes(searchTerm.toLowerCase());
@@ -242,7 +324,6 @@ export default function Interview() {
     return matchesSearch && matchesFilter;
   });
 
-  // --- YAPAY ZEKÂ SESLİ SORU SENTEZİ (TEXT-TO-SPEECH) ---
   const speakQuestion = (text) => {
     if (!window.speechSynthesis) {
       alert("Tarayıcınız ses sentezleme özelliğini desteklemiyor.");
@@ -255,7 +336,6 @@ export default function Interview() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // --- KATEGORİ SEÇİLDİĞİNDE SORULARI AYARLAMA ---
   const handleSelectCategory = async (cat) => {
     setSelectedCategory(cat);
     setCurrentQuestionIndex(0);
@@ -263,6 +343,7 @@ export default function Interview() {
     setFeedback(null);
     setAllResponses([]);
     setInterviewCompleted(false);
+    setAiMood('listening'); // Avatar sıfırlama
     stopListening();
     setLoadingQuestions(true);
 
@@ -323,7 +404,6 @@ export default function Interview() {
     }
   };
 
-  // --- MİKROFON İLE SESLİ YAZMA FONKSİYONLARI ---
   const toggleListening = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -382,13 +462,13 @@ export default function Interview() {
     setIsListening(false);
   };
 
-  // --- BACKEND /API/EVALUATE İLE YAPAY ZEKA DEĞERLENDİRMESİ ---
   const handleSubmitAnswer = async (e) => {
     if (e) e.preventDefault();
     if (!userAnswer.trim()) return;
 
     stopListening();
     setIsEvaluating(true);
+    setAiMood('thinking'); // Değerlendirirken avatar düşünme moduna geçer
 
     const token = localStorage.getItem('token');
     const currentQ = questions[currentQuestionIndex];
@@ -415,6 +495,15 @@ export default function Interview() {
         baseScore = Math.max(10, baseScore - 15); 
       }
 
+      // Puana göre avatarın mimik/ruh halini otomatik güncelle
+      if (baseScore >= 80) {
+        setAiMood('smiling');
+      } else if (baseScore >= 50) {
+        setAiMood('listening');
+      } else {
+        setAiMood('serious');
+      }
+
       const analysisResult = {
         question: currentQ,
         answer: userAnswer,
@@ -432,6 +521,7 @@ export default function Interview() {
     } catch (err) {
       console.error("Değerlendirme isteği başarısız:", err);
       alert("Yapay zeka analizi alınırken bir hata oluştu: " + err.message);
+      setAiMood('listening');
     } finally {
       setIsEvaluating(false);
     }
@@ -440,6 +530,7 @@ export default function Interview() {
   const handleNextQuestion = async () => {
     setFeedback(null);
     setUserAnswer('');
+    setAiMood('listening'); // Sonraki soruya geçince dinleme moduna dön
     stopListening();
     if (currentQuestionIndex + 1 < questions.length) {
       setCurrentQuestionIndex(prev => prev + 1);
@@ -503,9 +594,9 @@ export default function Interview() {
     const opt = {
       margin:      [10, 10, 10, 10],
       filename:    `Mulakat_Raporu_${new Date().toLocaleDateString('tr-TR')}.pdf`,
-      image:       { type: 'jpeg', quality: 0.98 },
+      image:      { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF:      { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save();
@@ -726,8 +817,11 @@ export default function Interview() {
               <p className="text-sm font-mono text-slate-400">Veritabanından sorular yükleniyor...</p>
             </div>
           ) : !interviewCompleted ? (
-            <div className="space-y-8">
+            <div className="space-y-6">
               
+              {/* --- YENİ EKLENEN: AI MÜLAKATÖR MİMİK / AVATAR BİLEŞENİ --- */}
+              <AiInterviewerAvatar aiMood={aiMood} />
+
               {/* ÜST BİLGİ & SÜRE YÖNETİMİ SAYACI */}
               <div className="flex flex-wrap items-center justify-between text-xs font-mono text-slate-400 bg-[#0b101d] border border-[#1e293b] px-5 py-3 rounded-2xl gap-3">
                 <span>{t.questionProgress} {currentQuestionIndex + 1} / {questions.length}</span>

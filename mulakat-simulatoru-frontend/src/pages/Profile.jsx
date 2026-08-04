@@ -12,12 +12,17 @@ const dailyQuestion = {
   }
 };
 
+// Mülakat odaklı zenginleştirilmiş rozet listesi
 const getBadgesList = (totalInterviews, totalQuestionsSolved, overallAvg, streakCount) => [
   { id: 1, title: 'İlk Adım', desc: 'İlk mülakat simülasyonunu tamamla', icon: '🚀', unlocked: totalInterviews >= 1 },
   { id: 2, title: 'Seri Katili', desc: '5 gün üst üste günlük soru çöz', icon: '🔥', unlocked: streakCount >= 5 },
-  { id: 3, title: 'Analitik Beyin', desc: 'Mülakat ortalaman 8.0 ve üzeri olsun', icon: '🧠', unlocked: parseFloat(overallAvg) >= 8.0 && totalInterviews > 0 },
-  { id: 4, title: 'Kriz Yönetmeni', desc: 'Toplamda en az 10 soru çöz', icon: '⚡', unlocked: totalQuestionsSolved >= 10 },
-  { id: 5, title: 'Mükemmeliyetçi', desc: 'Genel ortalamayı 9.0 üzerine çıkar', icon: '👑', unlocked: parseFloat(overallAvg) >= 9.0 && totalQuestionsSolved > 0 }
+  { id: 3, title: 'Diksiyon Üstadı', desc: 'Sesli anlatım ile mülakat akışını tamamla', icon: '🎙️', unlocked: totalInterviews >= 3 },
+  { id: 4, title: 'Stres Canavarı', desc: 'Stres testi modunda simülasyon bitir', icon: '⚡', unlocked: overallAvg >= 7.0 && totalInterviews > 0 },
+  { id: 5, title: 'Analitik Beyin', desc: 'Mülakat ortalaman 8.0 ve üzeri olsun', icon: '🧠', unlocked: parseFloat(overallAvg) >= 8.0 && totalInterviews > 0 },
+  { id: 6, title: 'Global Yetenek', desc: 'Yabancı dil mülakat kategorisini deneyimle', icon: '🌐', unlocked: totalInterviews >= 2 },
+  { id: 7, title: 'Kriz Yönetmeni', desc: 'Toplamda en az 10 soru çöz', icon: '🛡️', unlocked: totalQuestionsSolved >= 10 },
+  { id: 8, title: 'STAR Uzmanı', desc: 'Davranışsal sorularda başarı yakala', icon: '🎯', unlocked: totalQuestionsSolved >= 5 },
+  { id: 9, title: 'Mükemmeliyetçi', desc: 'Genel ortalamayı 9.0 üzerine çıkar', icon: '👑', unlocked: parseFloat(overallAvg) >= 9.0 && totalQuestionsSolved > 0 }
 ];
 
 export default function Profile() {
@@ -222,7 +227,7 @@ export default function Profile() {
               <div className="text-left">
                 <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider block">SERİ</span>
                 <span className="text-base font-black text-white">{streakCount} Gün</span>
-              </div>
+            </div>
             </div>
           </div>
         </div>

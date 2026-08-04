@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Mail, User, Clock, MessageSquare, ShieldCheck, Users, PlusCircle, AlertTriangle, Trash2, BarChart3, Database, Award, Send } from 'lucide-react';
+import { Mail, User, Clock, MessageSquare, ShieldCheck, Users, PlusCircle, AlertTriangle, Trash2, BarChart3, Database, Award, Send, RefreshCcw, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Admin() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'messages', 'users', 'questions', 'results', 'announcement'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'messages', 'users', 'questions', 'results', 'announcement', 'logs'
   const [messages, setMessages] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [questionsList, setQuestionsList] = useState([]);
   const [allResults, setAllResults] = useState([]);
   const [announcementsList, setAnnouncementsList] = useState([]);
+  const [errorLogs, setErrorLogs] = useState([]); // <-- Hata logları state'i
+  const [activities, setActivities] = useState({ recentResults: [], recentUsers: [], recentMessages: [] }); // <-- Son aktiviteler state'i
+  const [logStats, setLogStats] = useState({ todayErrorCount: 0, topErrorRoute: 'Veri Yok' }); // <-- Log istatistikleri state'i
+  const [loadingLogs, setLoadingLogs] = useState(false); // <-- Log yüklenme state'i
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAuthorized, setIsAuthorized] = useState(true);
@@ -88,6 +92,22 @@ export default function Admin() {
         console.error("Duyurular alınamadı:", e);
       }
 
+      // 6. Son Aktiviteler ve Log İstatistiklerini Çek
+      try {
+        const actRes = await fetch('http://localhost:5000/api/admin/activities-and-stats', { headers });
+        if (actRes.ok) {
+          const actData = await actRes.json();
+          setActivities({
+            recentResults: actData.recentResults || [],
+            recentUsers: actData.recentUsers || [],
+            recentMessages: actData.recentMessages || []
+          });
+          setLogStats(actData.stats || { todayErrorCount: 0, topErrorRoute: 'Veri Yok' });
+        }
+      } catch (e) {
+        console.error("Aktiviteler alınamadı:", e);
+      }
+
     } catch (err) {
       console.error("Genel hata:", err);
       setError("Veriler yüklenirken bir hata oluştu.");
@@ -96,9 +116,35 @@ export default function Admin() {
     }
   };
 
+  // Hata loglarını çeken fonksiyon
+  const fetchErrorLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/admin/error-logs', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setErrorLogs(data);
+      }
+    } catch (err) {
+      console.error("Loglar yüklenirken hata:", err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, [selectedCategory]);
+
+  // Sekme 'logs' olduğunda logları otomatik yükle
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      fetchErrorLogs();
+    }
+  }, [activeTab]);
 
   // Soru Ekleme
   const handleAddQuestion = async (e) => {
@@ -276,6 +322,12 @@ export default function Admin() {
             >
               Duyurular
             </button>
+            <button 
+              onClick={() => setActiveTab('logs')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'logs' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <AlertTriangle size={14} /> Sistem Hataları
+            </button>
           </div>
         </div>
 
@@ -286,7 +338,7 @@ export default function Admin() {
           <div className="text-center py-12 text-rose-400 font-medium">{error}</div>
         ) : (
           <>
-            {/* 1. SEKME: İSTATİSTİKLER (DASHBOARD) */}
+            {/* 1. SEKME: İSTATİSTİKLER (DASHBOARD) + SON AKTİVİTELER */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -329,6 +381,75 @@ export default function Admin() {
                       <h3 className="text-base font-black text-emerald-400 flex items-center gap-2 mt-1">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span> Aktif & Güvenli
                       </h3>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- SON AKTİVİTELER / SON KAYITLAR AKIŞI --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Son Mülakatlar */}
+                  <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-4">
+                    <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3">
+                      <Activity size={16} className="text-cyan-400" /> Son Mülakat Aktiviteleri
+                    </h3>
+                    <div className="space-y-3">
+                      {activities.recentResults.length === 0 ? (
+                        <p className="text-xs text-slate-500">Henüz mülakat kaydı yok.</p>
+                      ) : (
+                        activities.recentResults.map((r, i) => (
+                          <div key={i} className="bg-slate-950 p-3 rounded-xl border border-slate-800/60 text-xs space-y-1">
+                            <p className="text-slate-300 font-medium truncate"><strong className="text-cyan-400">{r.user_email}</strong> yeni bir mülakat tamamladı.</p>
+                            <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                              <span>{r.category_title}</span>
+                              <span className="text-emerald-400 font-bold">{r.score} Puan</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Son Kayıt Olan Kullanıcılar */}
+                  <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-4">
+                    <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3">
+                      <Users size={16} className="text-teal-400" /> Son Kayıt Olanlar
+                    </h3>
+                    <div className="space-y-3">
+                      {activities.recentUsers.length === 0 ? (
+                        <p className="text-xs text-slate-500">Henüz yeni kullanıcı yok.</p>
+                      ) : (
+                        activities.recentUsers.map((u, i) => (
+                          <div key={i} className="bg-slate-950 p-3 rounded-xl border border-slate-800/60 text-xs space-y-1">
+                            <p className="text-slate-200 font-bold">{u.name}</p>
+                            <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                              <span className="truncate">{u.email}</span>
+                              <span>{new Date(u.created_at).toLocaleDateString('tr-TR')}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Son İletişim Mesajları */}
+                  <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-4">
+                    <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3">
+                      <Mail size={16} className="text-amber-400" /> Son İletişim Mesajları
+                    </h3>
+                    <div className="space-y-3">
+                      {activities.recentMessages.length === 0 ? (
+                        <p className="text-xs text-slate-500">Henüz mesaj yok.</p>
+                      ) : (
+                        activities.recentMessages.map((m, i) => (
+                          <div key={i} className="bg-slate-950 p-3 rounded-xl border border-slate-800/60 text-xs space-y-1">
+                            <p className="text-slate-200 font-medium"><strong className="text-amber-400">{m.name}</strong> mesaj bıraktı.</p>
+                            <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                              <span className="truncate">{m.email}</span>
+                              <span>{new Date(m.created_at).toLocaleDateString('tr-TR')}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -632,6 +753,82 @@ export default function Admin() {
                   </div>
                 </div>
 
+              </div>
+            )}
+
+            {/* 7. SEKME: SİSTEM HATALARI & LOGLAR (+ MİNİ İSTATİSTİKLER) */}
+            {activeTab === 'logs' && (
+              <div className="space-y-6">
+                {/* --- MİNİ LOG İSTATİSTİKLERİ / SAYAÇLAR --- */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl flex items-center gap-4">
+                    <div className="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center">
+                      <AlertTriangle size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-mono text-slate-400">Bugünkü Hata Sayısı</p>
+                      <h3 className="text-2xl font-black text-amber-400">{logStats.todayErrorCount} Adet</h3>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl flex items-center gap-4">
+                    <div className="w-12 h-12 bg-rose-500/10 text-rose-400 rounded-2xl flex items-center justify-center">
+                      <Activity size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-mono text-slate-400">En Çok Hata Alınan Rota</p>
+                      <h3 className="text-base font-black text-rose-300 font-mono mt-1 truncate max-w-[280px]">{logStats.topErrorRoute}</h3>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- ANA LOG LİSTESİ --- */}
+                <div className="bg-slate-900/60 p-6 md:p-8 rounded-3xl border border-slate-800 space-y-6 animate-fade-in">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <div>
+                      <h2 className="text-xl font-black text-white flex items-center gap-2">
+                        <AlertTriangle className="text-amber-400" size={20} />
+                        <span>Canlı Sistem Hataları</span>
+                      </h2>
+                      <p className="text-xs text-slate-400">Kullanıcıların karşılaştığı anlık hata raporları ve log kayıtları.</p>
+                    </div>
+                    <button 
+                      onClick={fetchErrorLogs}
+                      className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      <RefreshCcw size={14} className={loadingLogs ? 'animate-spin' : ''} />
+                      <span>Yenile</span>
+                    </button>
+                  </div>
+
+                  {loadingLogs ? (
+                    <p className="text-xs text-slate-400 text-center py-12">Loglar yükleniyor...</p>
+                  ) : errorLogs.length === 0 ? (
+                    <div className="text-center py-12 space-y-2">
+                      <p className="text-sm text-slate-400">Harika! Şu anda sistemde kayıtlı bir hata bulunmuyor.</p>
+                      <p className="text-xs text-emerald-400 font-mono">Sistem sorunsuz çalışıyor.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                      {errorLogs.map((log) => (
+                        <div key={log.id} className="p-4 bg-slate-950 border border-slate-800/80 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-rose-500/10 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded font-mono text-[10px]">
+                                {log.route || 'Bilinmeyen Rota'}
+                              </span>
+                              <span className="text-slate-400 font-mono">Kullanıcı: <strong className="text-slate-200">{log.user_email}</strong></span>
+                            </div>
+                            <p className="text-slate-200 font-semibold mt-1">{log.error_message}</p>
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-500 shrink-0">
+                            {new Date(log.created_at).toLocaleString('tr-TR')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </>

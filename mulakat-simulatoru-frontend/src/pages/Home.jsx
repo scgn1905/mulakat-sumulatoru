@@ -18,7 +18,8 @@ import {
   Terminal,
   Cpu,
   Zap,
-  Bell
+  Bell,
+  Target
 } from 'lucide-react';
 
 export default function Home() {
@@ -30,8 +31,30 @@ export default function Home() {
   // Veritabanından çekilecek sistem duyuruları state'i
   const [announcements, setAnnouncements] = useState([]);
 
-  // Duyuruları backend'den çekme
+  // Haftalık hedef takip ve giriş kontrolü state'leri
+  const [goalData, setGoalData] = useState({ weeklyGoal: 3, completedCount: 0, remaining: 3, progressPercent: 0 });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Duyuruları ve Haftalık Hedef İlerlemesini backend'den çekme
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    const isValidToken = token && token !== 'null' && token !== 'undefined' && token.trim() !== '';
+
+    if (isValidToken) {
+      setIsLoggedIn(true);
+
+      fetch('http://localhost:5000/api/user-weekly-goal', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.weeklyGoal !== 'undefined') {
+            setGoalData(data);
+          }
+        })
+        .catch(err => console.error("Haftalık hedef bilgisi alınamadı:", err));
+    }
+
     fetch('http://localhost:5000/api/announcements')
       .then(res => res.json())
       .then(data => {
@@ -252,6 +275,44 @@ export default function Home() {
         </div>
       )}
 
+      {/* --- HAFTALIK HEDEF TAKİP İLERLEME KARTI (SADECE GİRİŞ YAPANLARA GÖRÜNÜR) --- */}
+      {isLoggedIn && (
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl space-y-4 backdrop-blur-xl shadow-xl transition-colors">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 rounded-xl flex items-center justify-center shrink-0">
+                  <Target size={20} />
+                </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Haftalık Pratik Hedefi İlerlemesi</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Ayarlardan belirlediğiniz hedefe göre son 7 günlük durumunuz</p>
+            </div>
+          </div>
+          <span className="text-xs font-mono font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 px-3 py-1 rounded-full">
+            {goalData.completedCount} / {goalData.weeklyGoal} Mülakat Tamamlandı
+          </span>
+        </div>
+
+        {/* İlerleme Çubuğu */}
+        <div className="space-y-2 pt-2">
+          <div className="flex justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
+            <span>İlerleme Oranı: %{goalData.progressPercent}</span>
+            <span className="font-semibold text-cyan-600 dark:text-cyan-300">
+              {goalData.remaining > 0 ? `Hedefe ulaşmak için ${goalData.remaining} mülakat kaldı` : '🎉 Harika! Haftalık hedefine ulaştın!'}
+            </span>
+          </div>
+          <div className="h-3 w-full bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div 
+              className="h-full bg-gradient-to-r from-cyan-500 to-teal-400 transition-all duration-700 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.4)]"
+              style={{ width: `${goalData.progressPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+      )}
+
       {/* HERO SECTION */}
       <section className="relative pt-16 pb-12 flex flex-col items-center px-4 overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-slate-100/80 dark:bg-slate-950 transition-colors">
         
@@ -457,7 +518,7 @@ export default function Home() {
             <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">Türkçe & İngilizce Mod</h3>
             <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">İster uluslararası küresel mülakatlar için İngilizce, ister ana dilinizde Türkçe simülasyonlar gerçekleştirin.</p>
           </div>
-        </div>
+      </div>
       </section>
 
       {/* FİYATLANDIRMA SECTION */}
