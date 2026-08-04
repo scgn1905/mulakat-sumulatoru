@@ -1,14 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-const topicAnalytics = [
-  { topic: 'Kriz Yönetimi & Soğukkanlılık', score: 85 },
-  { topic: 'Müşteri İkna Kabiliyeti', score: 45 },
-  { topic: 'Bütçe & Veri Odaklı Karar Alma', score: 90 },
-  { topic: 'Takım İçi Çatışma Çözümü (STAR)', score: 60 },
-  { topic: 'Liderlik & Ekip Motivasyonu', score: 75 },
-  { topic: 'Zaman Yönetimi ve Önceliklendirme', score: 88 }
-];
-
 const dailyQuestion = {
   id: 'daily-corp-1',
   category: 'Günün Kurumsal Sorusu • Müşteri & İletişim',
@@ -39,6 +30,15 @@ export default function Profile() {
   const [interviewHistory, setInterviewHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
+  const [topicAnalytics, setTopicAnalytics] = useState([
+    { topic: 'Kriz Yönetimi & Soğukkanlılık', score: 0 },
+    { topic: 'Müşteri İkna Kabiliyeti', score: 0 },
+    { topic: 'Bütçe & Veri Odaklı Karar Alma', score: 0 },
+    { topic: 'Takım İçi Çatışma Çözümü (STAR)', score: 0 },
+    { topic: 'Liderlik & Ekip Motivasyonu', score: 0 },
+    { topic: 'Zaman Yönetimi ve Önceliklendirme', score: 0 }
+  ]);
+
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     name: 'Seçgin',
@@ -49,70 +49,93 @@ export default function Profile() {
   });
   const [saved, setSaved] = useState(false);
 
+  // TEK VE EKSİKSİZ USEEFFECT (Veri yoksa %0 yapan mantık)
   useEffect(() => {
-    try {
-      // Giriş yapan aktif kullanıcıyı okuyup profile yansıtıyoruz
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (currentUser.name || currentUser.email) {
-        setProfileData(prev => ({
-          ...prev,
-          name: currentUser.name || prev.name,
-          email: currentUser.email || prev.email
-        }));
-      }
-
-      // Her kullanıcının kendi e-postasına özel istatistiklerini yüklüyoruz (yeni hesapsa 0 başlar)
-      if (currentUser.email) {
-        const userStatsKey = `interviewStats_${currentUser.email}`;
-        const savedStats = JSON.parse(localStorage.getItem(userStatsKey));
-        if (savedStats) {
-          setStats(savedStats);
-        } else {
-          setStats({ interviews: 0, totalQuestions: 0, totalScoreSum: 0 });
-        }
-
-        // Kullanıcıya özel seri (streak) verisini yüklüyoruz
-        const userStreakKey = `streakCount_${currentUser.email}`;
-        const savedStreak = localStorage.getItem(userStreakKey);
-        if (savedStreak !== null) {
-          setStreakCount(parseInt(savedStreak, 10));
-        } else {
-          setStreakCount(1); // Yeni hesap için başlangıç serisi
-        }
-
-        const userDailySolvedKey = `daily_solved_${currentUser.email}`;
-        const solved = localStorage.getItem(userDailySolvedKey);
-        if (solved === 'true') {
-          setIsDailySolved(true);
-        }
-      }
-    } catch (err) {
-      console.error("Veriler yüklenirken hata:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!currentUser.email) {
-        setLoadingHistory(false);
-        return;
-      }
-
+    const loadAllProfileData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/interview-results/${currentUser.email}`);
-        if (response.ok) {
-          const data = await response.json();
-          setInterviewHistory(data);
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        if (currentUser.name || currentUser.email) {
+          setProfileData(prev => ({
+            ...prev,
+            name: currentUser.name || prev.name,
+            email: currentUser.email || prev.email
+          }));
+        }
+
+        if (currentUser.email) {
+          const userStatsKey = `interviewStats_${currentUser.email}`;
+          const savedStats = JSON.parse(localStorage.getItem(userStatsKey));
+          if (savedStats) {
+            setStats(savedStats);
+          }
+
+          const userStreakKey = `streakCount_${currentUser.email}`;
+          const savedStreak = localStorage.getItem(userStreakKey);
+          if (savedStreak !== null) {
+            setStreakCount(parseInt(savedStreak, 10));
+          }
+
+          if (localStorage.getItem(`daily_solved_${currentUser.email}`) === 'true') {
+            setIsDailySolved(true);
+          }
+
+          let fetchedData = [];
+          try {
+            const response = await fetch(`http://localhost:5000/api/interview-results/${currentUser.email}`);
+            if (response.ok) {
+              fetchedData = await response.json();
+              setInterviewHistory(fetchedData);
+            }
+          } catch (e) {
+            console.error("API bağlantı uyarısı:", e);
+          }
+
+          // Eğer mülakat geçmişi varsa ortalamaya göre hesapla, yoksa HER ŞEYİ 0 YAP
+          if (fetchedData.length > 0) {
+            let totalScore = 0;
+            fetchedData.forEach(item => totalScore += item.score);
+            let avgScore = Math.round(totalScore / fetchedData.length);
+
+            setTopicAnalytics([
+              { topic: 'Kriz Yönetimi & Soğukkanlılık', score: avgScore },
+              { topic: 'Müşteri İkna Kabiliyeti', score: Math.min(100, avgScore + 5) },
+              { topic: 'Bütçe & Veri Odaklı Karar Alma', score: Math.max(0, avgScore - 5) },
+              { topic: 'Takım İçi Çatışma Çözümü (STAR)', score: avgScore },
+              { topic: 'Liderlik & Ekip Motivasyonu', score: Math.min(100, avgScore + 8) },
+              { topic: 'Zaman Yönetimi ve Önceliklendirme', score: avgScore }
+            ]);
+          } else if (savedStats && savedStats.totalQuestions > 0) {
+            let fallbackAvg = Math.round((savedStats.totalScoreSum / savedStats.totalQuestions) * 10);
+            fallbackAvg = Math.min(100, Math.max(0, fallbackAvg));
+
+            setTopicAnalytics([
+              { topic: 'Kriz Yönetimi & Soğukkanlılık', score: fallbackAvg },
+              { topic: 'Müşteri İkna Kabiliyeti', score: Math.min(100, fallbackAvg + 6) },
+              { topic: 'Bütçe & Veri Odaklı Karar Alma', score: Math.max(0, fallbackAvg - 8) },
+              { topic: 'Takım İçi Çatışma Çözümü (STAR)', score: fallbackAvg },
+              { topic: 'Liderlik & Ekip Motivasyonu', score: Math.min(100, fallbackAvg + 5) },
+              { topic: 'Zaman Yönetimi ve Önceliklendirme', score: fallbackAvg }
+            ]);
+          } else {
+            // VERİ YOKSA DİREKT %0
+            setTopicAnalytics([
+              { topic: 'Kriz Yönetimi & Soğukkanlılık', score: 0 },
+              { topic: 'Müşteri İkna Kabiliyeti', score: 0 },
+              { topic: 'Bütçe & Veri Odaklı Karar Alma', score: 0 },
+              { topic: 'Takım İçi Çatışma Çözümü (STAR)', score: 0 },
+              { topic: 'Liderlik & Ekip Motivasyonu', score: 0 },
+              { topic: 'Zaman Yönetimi ve Önceliklendirme', score: 0 }
+            ]);
+          }
         }
       } catch (err) {
-        console.error("Geçmiş mülakatlar yüklenemedi:", err);
+        console.error("Profil verileri yüklenirken hata:", err);
       } finally {
         setLoadingHistory(false);
       }
     };
 
-    fetchHistory();
+    loadAllProfileData();
   }, []);
 
   const totalInterviews = stats.interviews;

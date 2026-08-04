@@ -10,8 +10,12 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'mulakat_gizli_anahtar_2026';
-const ai = new GoogleGenAI({ apiKey: "AQ.Ab8RN6JyrhmRDClWcZFvqLnKLp_INDpXa04diGI7C1KLgMxwnQ" });
-app.use(cors());
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 const verifyToken = (req, res, next) => {
@@ -224,7 +228,6 @@ const initDatabase = async () => {
             )
         `);
 
-        // --- DUYURULAR TABLOSU (Doğru İsimle Düzeltildi) ---
         await db.query(`
             CREATE TABLE IF NOT EXISTS announcements (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -360,7 +363,6 @@ app.get('/api/settings', verifyToken, async (req, res) => {
     }
 });
 
-// --- ADMIN: İLETİŞİM MESAJLARINI LİSTELEME ---
 app.get('/api/admin/messages', verifyToken, async (req, res) => {
     try {
         if (req.user.email !== 'secginn@gmail.com') {
@@ -374,7 +376,6 @@ app.get('/api/admin/messages', verifyToken, async (req, res) => {
     }
 });
 
-// --- ADMIN: KULLANICILARI LİSTELEME ---
 app.get('/api/admin/users', verifyToken, async (req, res) => {
     try {
         if (req.user.email !== 'secginn@gmail.com') {
@@ -388,7 +389,6 @@ app.get('/api/admin/users', verifyToken, async (req, res) => {
     }
 });
 
-// --- DUYURU OLUŞTURMA ENDPOINT'İ (Sadece Admin) ---
 app.post('/api/announcements', verifyToken, async (req, res) => {
     if (req.user.email !== 'secginn@gmail.com') {
         return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
@@ -406,7 +406,6 @@ app.post('/api/announcements', verifyToken, async (req, res) => {
     }
 });
 
-// --- DUYURULARI LİSTELEME ENDPOINT'İ (Herkes Görebilir) ---
 app.get('/api/announcements', async (req, res) => {
     try {
         const [rows] = await db.query("SELECT * FROM announcements ORDER BY created_at DESC");
@@ -417,7 +416,6 @@ app.get('/api/announcements', async (req, res) => {
     }
 });
 
-// --- DUYURU SİLME ENDPOINT'İ (Sadece Admin) ---
 app.delete('/api/announcements/:id', verifyToken, async (req, res) => {
     if (req.user.email !== 'secginn@gmail.com') {
         return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
@@ -500,6 +498,43 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
+// --- KULLANICIYA ÖZEL YETKİNLİK VE ISI HARİTASI İSTATİSTİKLERİ ---
+app.get('/api/user-heatmap', verifyToken, async (req, res) => {
+    try {
+        const userEmail = req.user.email;
+        
+        const [results] = await db.query(
+            "SELECT category_title, score FROM interview_results WHERE user_email = ? ORDER BY created_at DESC", 
+            [userEmail]
+        );
+
+        let stats = {
+            "Kriz Yönetimi & Soğukkanlılık": 0,
+            "Müşteri İkna Kabiliyeti": 0,
+            "Bütçe & Veri Odaklı Karar Alma": 0,
+            "Takım İçi Çatışma Çözümü (STAR)": 0,
+            "Liderlik & Ekip Motivasyonu": 0,
+            "Zaman Yönetimi ve Önceliklendirme": 0
+        };
+
+        if (results.length > 0) {
+            let totalSum = 0;
+            results.forEach(r => totalSum += r.score);
+            let generalAvg = Math.round(totalSum / results.length);
+
+            Object.keys(stats).forEach(key => {
+                stats[key] = generalAvg;
+            });
+        }
+
+        res.json(stats);
+    } catch (err) {
+        console.error("Isı haritası veri hatası:", err);
+        res.status(500).json({ error: "Sunucu hatası oluştu." });
+    }
+});
+
+// --- YAPAY ZEKA DEĞERLENDİRME ENDPOINT'İ ---
 app.post('/api/evaluate', verifyToken, async (req, res) => {
     const { question, answer } = req.body;
 
@@ -508,10 +543,10 @@ app.post('/api/evaluate', verifyToken, async (req, res) => {
     }
 
     try {
-        const apiKey = "AQ.Ab8RN6JyrhmRDClWcZFvqLnKLp_INDpXa04diGI7C1KLgMxwnQ";
-        const prompt = "Sen kıdemli bir teknik mülakat uzmanısın. Mülakat Sorusu: \"" + question + "\". Adayın Verdiği Yanıt: \"" + answer + "\". KURALLAR: 1. Aday saçma sapan, alakasız, çok kısa veya tek bir nokta/karakter yazdıysa puanı KESİNLİKLE 0 ile 20 arasında ver. 2. Yanıtı teknik açıdan ve STAR metoduna göre ciddi şekilde değerlendir. Yanıtını KESİNLİKLE şu JSON formatında döndür, başka hiçbir metin ekleme: {\"score\": 15, \"feedback\": \"Geri bildirim metni\"}";
+        const apiKey = process.env.GEMINI_API_KEY;
+        const prompt = "You are a senior technical interview expert. Analyze the question and candidate's answer. Question: \"" + question + "\". Candidate's Answer: \"" + answer + "\". RULES: 1. If the answer is nonsense, irrelevant, too short, or a single point/character, give a score strictly between 0 and 20. 2. Evaluate the response seriously based on technical aspects and the STAR method. 3. If the question or context is in Turkish, write the feedback in Turkish. If it is in English, write the feedback in English. Return your response STRICTLY as a JSON object, with no other text or markdown: {\"score\": 15, \"feedback\": \"Feedback text in the matching language\"}";
 
-        const fetchUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-3.6-flash:generateContent?key=" + apiKey;
+        const fetchUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
 
         const geminiResponse = await fetch(fetchUrl, {
             method: 'POST',

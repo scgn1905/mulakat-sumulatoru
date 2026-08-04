@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import html2pdf from 'html2pdf.js';
+import InterviewTimer from '../components/InterviewTimer';
 import { 
   Briefcase, 
   Sparkles, 
@@ -27,7 +28,8 @@ import {
   CheckCircle2,
   Zap,
   Flame,
-  Volume2
+  Volume2,
+  Clock
 } from 'lucide-react';
 
 export default function Interview() {
@@ -60,6 +62,14 @@ export default function Interview() {
 
   // --- HAREKETLİ / ANİMASYONLU TAKTİKLER İÇİN STATE ---
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
+
+  // --- SÜRE YÖNETİMİ (SAYAÇ) BİLDİRİMİ ---
+  const QUESTION_TIME_LIMIT = 60; // Her soru için 60 saniye
+
+  const handleTimeUp = () => {
+    // Süre bittiğinde yapılacak işlemler (isteğe bağlı uyarı veya otomatik geçiş eklenebilir)
+    console.log("Süre doldu!");
+  };
 
   const t = {
     tr: {
@@ -245,7 +255,6 @@ export default function Interview() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // --- KATEGORİ SEÇİldİĞİNDE BACKEND'DEN SORULARI ÇEKME ---
   // --- KATEGORİ SEÇİLDİĞİNDE SORULARI AYARLAMA ---
   const handleSelectCategory = async (cat) => {
     setSelectedCategory(cat);
@@ -257,7 +266,6 @@ export default function Interview() {
     stopListening();
     setLoadingQuestions(true);
 
-    // Kategoriye özel fallback/yedek zengin soru havuzu (Garantili 4'er soru)
     const fallbackQuestions = {
       frontend: [
         "React bileşenlerinde state ve props kavramlarını karşılaştırarak örnek veriniz.",
@@ -299,7 +307,6 @@ export default function Interview() {
       if (response.ok) {
         const data = await response.json();
         if (data && data.length > 0) {
-          // Gelen soruları karıştırıp (shuffle) diziye aktarıyoruz
           const fetchedTexts = data.map(q => q.question_text);
           setQuestions(fetchedTexts);
         } else {
@@ -376,9 +383,8 @@ export default function Interview() {
   };
 
   // --- BACKEND /API/EVALUATE İLE YAPAY ZEKA DEĞERLENDİRMESİ ---
-  // --- BACKEND /API/EVALUATE İLE YAPAY ZEKA DEĞERLENDİRMESİ ---
   const handleSubmitAnswer = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!userAnswer.trim()) return;
 
     stopListening();
@@ -394,7 +400,6 @@ export default function Interview() {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        // KRİTİK DÜZELTME: Artık hem soruyu hem de cevabı backend'e gönderiyoruz
         body: JSON.stringify({ question: currentQ, answer: userAnswer })
       });
 
@@ -667,10 +672,10 @@ export default function Interview() {
                       <span>{t.questionsCount}</span>
                       <span>{t.start} →</span>
                     </div>
-                  </div>
-                ))
+                </div>
+              ))
               )}
-            </div>
+          </div>
           </div>
 
         </div>
@@ -710,130 +715,139 @@ export default function Interview() {
               <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-2xl text-[11px] text-emerald-400 flex items-center gap-2">
                 <CheckCircle2 size={16} />
                 <span>Mikrofon ses analizi ve diksiyon takibi aktif.</span>
-              </div>
             </div>
           </div>
+        </div>
 
-          <div className="lg:col-span-3">
-            {loadingQuestions ? (
-              <div className="bg-[#0b101d] border border-[#1e293b] p-16 rounded-3xl text-center space-y-4">
-                <Loader2 size={36} className="animate-spin text-[#f97316] mx-auto" />
-                <p className="text-sm font-mono text-slate-400">Veritabanından sorular yükleniyor...</p>
-              </div>
-            ) : !interviewCompleted ? (
-              <div className="space-y-8">
+        <div className="lg:col-span-3">
+          {loadingQuestions ? (
+            <div className="bg-[#0b101d] border border-[#1e293b] p-16 rounded-3xl text-center space-y-4">
+              <Loader2 size={36} className="animate-spin text-[#f97316] mx-auto" />
+              <p className="text-sm font-mono text-slate-400">Veritabanından sorular yükleniyor...</p>
+            </div>
+          ) : !interviewCompleted ? (
+            <div className="space-y-8">
+              
+              {/* ÜST BİLGİ & SÜRE YÖNETİMİ SAYACI */}
+              <div className="flex flex-wrap items-center justify-between text-xs font-mono text-slate-400 bg-[#0b101d] border border-[#1e293b] px-5 py-3 rounded-2xl gap-3">
+                <span>{t.questionProgress} {currentQuestionIndex + 1} / {questions.length}</span>
                 
-                <div className="flex items-center justify-between text-xs font-mono text-slate-400 bg-[#0b101d] border border-[#1e293b] px-5 py-3 rounded-2xl">
-                  <span>{t.questionProgress} {currentQuestionIndex + 1} / {questions.length}</span>
-                  <span className="text-[#f97316] font-bold">{t.aiActive}</span>
+                {/* SÜRE YÖNETİMİ GÖSTERGESİ */}
+                <InterviewTimer 
+                  key={currentQuestionIndex} 
+                  durationInSeconds={QUESTION_TIME_LIMIT} 
+                  onTimeUp={handleTimeUp} 
+                />
+
+                <span className="text-[#f97316] font-bold">{t.aiActive}</span>
+              </div>
+
+              <div className="bg-[#0b101d] border border-[#1e293b] p-8 rounded-3xl shadow-xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-mono text-[#f97316]">
+                    <Briefcase size={16} />
+                    <span>{t.aiInterviewer}</span>
+                  </div>
+
+                  <button
+                    onClick={() => speakQuestion(questions[currentQuestionIndex])}
+                    className="flex items-center gap-1.5 bg-[#131b2e] hover:bg-[#1e293b] border border-[#222f4c] text-cyan-400 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow"
+                    title="Yapay Zekâ Soruyu Sesli Oku"
+                  >
+                    <Volume2 size={15} />
+                    <span>Soruyu Dinle</span>
+                  </button>
                 </div>
 
-                <div className="bg-[#0b101d] border border-[#1e293b] p-8 rounded-3xl shadow-xl space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-mono text-[#f97316]">
-                      <Briefcase size={16} />
-                      <span>{t.aiInterviewer}</span>
-                    </div>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-100 leading-snug">
+                  "{questions[currentQuestionIndex]}"
+                </h2>
+              </div>
+
+              {!feedback ? (
+                <form onSubmit={handleSubmitAnswer} className="space-y-4">
+                  <div className="relative">
+                    <textarea
+                      rows={5}
+                      required
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      placeholder={t.placeholder}
+                      className="w-full bg-[#050811] border border-[#1b2436] rounded-2xl p-5 text-sm text-slate-200 focus:outline-none focus:border-[#f97316] transition resize-none shadow-inner"
+                    ></textarea>
 
                     <button
-                      onClick={() => speakQuestion(questions[currentQuestionIndex])}
-                      className="flex items-center gap-1.5 bg-[#131b2e] hover:bg-[#1e293b] border border-[#222f4c] text-cyan-400 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow"
-                      title="Yapay Zekâ Soruyu Sesli Oku"
+                      type="button"
+                      onClick={toggleListening}
+                      className={`absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg cursor-pointer ${
+                        isListening 
+                          ? 'bg-rose-500 hover:bg-rose-600 text-white animate-pulse' 
+                          : 'bg-[#131b2e] hover:bg-[#1e293b] border border-[#222f4c] text-cyan-400'
+                      }`}
+                      title="Sesle Anlat / Mikrofonu Aç"
                     >
-                      <Volume2 size={15} />
-                      <span>Soruyu Dinle</span>
+                      {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                      <span>{isListening ? 'Dinleniyor... (Kapat)' : 'Sesle Anlat'}</span>
                     </button>
                   </div>
 
-                  <h2 className="text-xl md:text-2xl font-bold text-slate-100 leading-snug">
-                    "{questions[currentQuestionIndex]}"
-                  </h2>
-                </div>
-
-                {!feedback ? (
-                  <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                    <div className="relative">
-                      <textarea
-                        rows={5}
-                        required
-                        value={userAnswer}
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        placeholder={t.placeholder}
-                        className="w-full bg-[#050811] border border-[#1b2436] rounded-2xl p-5 text-sm text-slate-200 focus:outline-none focus:border-[#f97316] transition resize-none shadow-inner"
-                      ></textarea>
-
-                      <button
-                        type="button"
-                        onClick={toggleListening}
-                        className={`absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg cursor-pointer ${
-                          isListening 
-                            ? 'bg-rose-500 hover:bg-rose-600 text-white animate-pulse' 
-                            : 'bg-[#131b2e] hover:bg-[#1e293b] border border-[#222f4c] text-cyan-400'
-                        }`}
-                        title="Sesle Anlat / Mikrofonu Aç"
-                      >
-                        {isListening ? <MicOff size={16} /> : <Mic size={16} />}
-                        <span>{isListening ? 'Dinleniyor... (Kapat)' : 'Sesle Anlat'}</span>
-                      </button>
+                  <button
+                    type="submit"
+                    disabled={isEvaluating}
+                    className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-extrabold py-4 rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/20"
+                  >
+                    {isEvaluating ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>{t.evaluating}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={18} />
+                        <span>{t.evaluateBtn}</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                <div className="bg-[#0b101d] border border-[#f97316]/40 p-8 rounded-3xl space-y-6 animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-[#1b2436] pb-4">
+                    <div className="flex items-center gap-2 text-[#f97316] font-bold">
+                      <Sparkles size={20} />
+                      <span>{t.aiEvalTitle}</span>
                     </div>
-
-                    <button
-                      type="submit"
-                      disabled={isEvaluating}
-                      className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-extrabold py-4 rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/20"
-                    >
-                      {isEvaluating ? (
-                        <>
-                          <Loader2 size={18} className="animate-spin" />
-                          <span>{t.evaluating}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send size={18} />
-                          <span>{t.evaluateBtn}</span>
-                        </>
-                      )}
-                    </button>
-                  </form>
-                ) : (
-                  <div className="bg-[#0b101d] border border-[#f97316]/40 p-8 rounded-3xl space-y-6 animate-fadeIn">
-                    <div className="flex items-center justify-between border-b border-[#1b2436] pb-4">
-                      <div className="flex items-center gap-2 text-[#f97316] font-bold">
-                        <Sparkles size={20} />
-                        <span>{t.aiEvalTitle}</span>
-                      </div>
-                      <span className="text-xs font-mono bg-[#1c1810] border border-orange-500/30 text-orange-400 px-3 py-1 rounded-full">
-                        {t.questionScore}: {feedback.score} / 100
-                      </span>
-                    </div>
-
-                    <div className="space-y-4 text-sm text-slate-300">
-                      <div>
-                        <strong className="text-slate-200 block text-xs font-mono mb-1 text-[#f97316]">{t.analysisLabel}</strong>
-                        <p className="leading-relaxed">{feedback.analysis}</p>
-                      </div>
-
-                      <div className="bg-rose-950/20 border border-rose-500/30 p-4 rounded-2xl">
-                        <strong className="text-rose-400 flex items-center gap-1.5 text-xs font-mono mb-1">
-                          <AlertCircle size={14} /> {t.missingLabel}
-                        </strong>
-                        <p className="text-slate-300 leading-relaxed text-xs">{feedback.missingPoints}</p>
-                      </div>
-
-                      <div>
-                        <strong className="text-slate-200 block text-xs font-mono mb-1 text-amber-400">{t.suggestionLabel}</strong>
-                        <p className="leading-relaxed text-xs">{feedback.suggestion}</p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleNextQuestion}
-                      className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <span>{currentQuestionIndex + 1 < questions.length ? t.nextQ : t.finishSim}</span>
-                    </button>
+                    <span className="text-xs font-mono bg-[#1c1810] border border-orange-500/30 text-orange-400 px-3 py-1 rounded-full">
+                      {t.questionScore}: {feedback.score} / 100
+                    </span>
                   </div>
-                )}
+
+                  <div className="space-y-4 text-sm text-slate-300">
+                    <div>
+                      <strong className="text-slate-200 block text-xs font-mono mb-1 text-[#f97316]">{t.analysisLabel}</strong>
+                      <p className="leading-relaxed">{feedback.analysis}</p>
+                    </div>
+
+                    <div className="bg-rose-950/20 border border-rose-500/30 p-4 rounded-2xl">
+                      <strong className="text-rose-400 flex items-center gap-1.5 text-xs font-mono mb-1">
+                        <AlertCircle size={14} /> {t.missingLabel}
+                      </strong>
+                      <p className="text-slate-300 leading-relaxed text-xs">{feedback.missingPoints}</p>
+                    </div>
+
+                    <div>
+                      <strong className="text-slate-200 block text-xs font-mono mb-1 text-amber-400">{t.suggestionLabel}</strong>
+                      <p className="leading-relaxed text-xs">{feedback.suggestion}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleNextQuestion}
+                    className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>{currentQuestionIndex + 1 < questions.length ? t.nextQ : t.finishSim}</span>
+                  </button>
+                </div>
+              )}
 
               </div>
             ) : (
@@ -931,6 +945,7 @@ export default function Interview() {
                     <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30">
                       ✨ Başarılı Akış
                     </span>
+
                   </div>
 
                   <div className="space-y-3">
@@ -952,16 +967,16 @@ export default function Interview() {
                   </div>
 
                   {isListening && (
-  <div className="bg-[#131b2e] p-5 rounded-2xl border border-[#222f4c] space-y-2">
-    <div className="flex items-center gap-2 text-[#f97316] text-xs font-bold">
-      <Sparkles size={16} />
-      <span>AI Ses Koçu Genel Tavsiyesi</span>
-    </div>
-    <p className="text-xs text-slate-300 italic font-medium leading-relaxed">
-      "Sesli anlatımlarda vurgularınız oldukça net. Gelecek oturumlarda heyecan anındaki duraksamaları minimuma indirerek profesyonel diksiyonunuzu daha da öne çıkarabilirsiniz."
-    </p>
-  </div>
-)}
+                      <div className="bg-[#131b2e] p-5 rounded-2xl border border-[#222f4c] space-y-2">
+                        <div className="flex items-center gap-2 text-[#f97316] text-xs font-bold">
+                          <Sparkles size={16} />
+                          <span>AI Ses Koçu Genel Tavsiyesi</span>
+                        </div>
+                        <p className="text-xs text-slate-300 italic font-medium leading-relaxed">
+                          "Sesli anlatımlarda vurgularınız oldukça net. Gelecek oturumlarda heyecan anındaki duraksamaları minimuma indirerek profesyonel diksiyonunuzu daha da öne çıkarabilirsiniz."
+                        </p>
+                      </div>
+                  )}
 
                 </div>
 
@@ -992,6 +1007,6 @@ export default function Interview() {
         </div>
       )}
 
-    </div>
+  </div>
   );
 }
